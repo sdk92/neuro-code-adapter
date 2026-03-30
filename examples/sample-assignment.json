@@ -1,0 +1,95 @@
+{
+  "metadata": {
+    "id": "csharp-calculator-101",
+    "title": "Build a Simple Calculator in C#",
+    "description": "Create a console-based calculator that performs basic arithmetic operations using C# fundamentals.",
+    "author": "NeuroCode Team",
+    "createdAt": "2026-01-15T00:00:00Z",
+    "updatedAt": "2026-01-15T00:00:00Z",
+    "difficulty": "beginner",
+    "estimatedMinutes": 45,
+    "language": "C#",
+    "tags": ["console-app", "arithmetic", "user-input", "control-flow"]
+  },
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Project Overview",
+      "type": "instruction",
+      "order": 0,
+      "content": "In this assignment, you will create a simple calculator application in C#. The calculator will:\n\n- Accept two numbers from the user\n- Allow the user to choose an operation (+, -, *, /)\n- Display the result\n- Handle basic error cases (like division by zero)\n\nThis project will help you practice working with variables, user input, conditional statements, and basic arithmetic operations."
+    },
+    {
+      "id": "setup",
+      "title": "Step 1: Project Setup",
+      "type": "task",
+      "order": 1,
+      "content": "Create a new C# console application:\n\n```csharp\ndotnet new console -n SimpleCalculator\ncd SimpleCalculator\n```\n\nOpen the project in VS Code and navigate to `Program.cs`. You should see the default Hello World template."
+    },
+    {
+      "id": "input",
+      "title": "Step 2: Getting User Input",
+      "type": "task",
+      "order": 2,
+      "content": "Modify `Program.cs` to ask the user for two numbers. You will need to:\n\n1. Use `Console.WriteLine()` to display a prompt\n2. Use `Console.ReadLine()` to read the input\n3. Use `double.Parse()` to convert the string to a number\n\n**Important:** `Console.ReadLine()` returns a `string`. You need to convert it to a number before doing math with it.\n\n### Think About:\n- What happens if the user types something that isn't a number?\n- What type should you use for the numbers? (`int`, `double`, `decimal`?)"
+    },
+    {
+      "id": "input-hint",
+      "title": "Hint: Reading Numbers",
+      "type": "hint",
+      "order": 3,
+      "content": "Here's the pattern for reading a number from the console:\n\n```csharp\nConsole.Write(\"Enter a number: \");\nstring input = Console.ReadLine();\ndouble number = double.Parse(input);\n```\n\nYou'll need to do this twice — once for each number."
+    },
+    {
+      "id": "operation",
+      "title": "Step 3: Choosing the Operation",
+      "type": "task",
+      "order": 4,
+      "content": "After getting both numbers, ask the user which operation they want to perform. Display a menu like:\n\n```\nChoose an operation:\n1. Addition (+)\n2. Subtraction (-)\n3. Multiplication (*)\n4. Division (/)\n```\n\nUse a `switch` statement or `if/else` chain to perform the correct calculation based on the user's choice."
+    },
+    {
+      "id": "division-example",
+      "title": "Example: Handling Division by Zero",
+      "type": "example",
+      "order": 5,
+      "content": "Division by zero will cause an error. You should check for this before performing the division:\n\n```csharp\nif (num2 == 0)\n{\n    Console.WriteLine(\"Error: Cannot divide by zero!\");\n}\nelse\n{\n    double result = num1 / num2;\n    Console.WriteLine($\"Result: {num1} / {num2} = {result}\");\n}\n```\n\nThis pattern of checking for errors before they happen is called **defensive programming**."
+    },
+    {
+      "id": "output",
+      "title": "Step 4: Displaying the Result",
+      "type": "task",
+      "order": 6,
+      "content": "Display the result using string interpolation:\n\n```csharp\nConsole.WriteLine($\"Result: {num1} {operation} {num2} = {result}\");\n```\n\nMake sure to format the result nicely. For division results, you might want to limit decimal places:\n\n```csharp\nConsole.WriteLine($\"Result: {result:F2}\");\n```\n\nThe `:F2` format specifier rounds to 2 decimal places."
+    },
+    {
+      "id": "reference",
+      "title": "C# Reference: Useful Methods",
+      "type": "reference",
+      "order": 7,
+      "content": "### Console I/O\n- `Console.WriteLine(text)` — Write text with newline\n- `Console.Write(text)` — Write text without newline\n- `Console.ReadLine()` — Read a line of text\n\n### Type Conversion\n- `double.Parse(str)` — Convert string to double (throws on invalid input)\n- `double.TryParse(str, out result)` — Safer conversion (returns bool)\n- `Convert.ToDouble(str)` — Another way to convert\n\n### String Formatting\n- `$\"text {variable}\"` — String interpolation\n- `$\"{value:F2}\"` — Format to 2 decimal places\n- `$\"{value:N0}\"` — Format with thousands separator"
+    }
+  ],
+  "starterCode": "using System;\n\nnamespace SimpleCalculator\n{\n    class Program\n    {\n        static void Main(string[] args)\n        {\n            Console.WriteLine(\"=== Simple Calculator ===\");\n            \n            // TODO: Step 1 - Get the first number from the user\n            \n            // TODO: Step 2 - Get the second number from the user\n            \n            // TODO: Step 3 - Ask which operation to perform\n            \n            // TODO: Step 4 - Perform the calculation and display the result\n        }\n    }\n}\n",
+  "testCases": [
+    {
+      "id": "test_addition",
+      "description": "Addition: 5 + 3 = 8",
+      "input": "5\n3\n1",
+      "expectedOutput": "8",
+      "isHidden": false
+    },
+    {
+      "id": "test_division_by_zero",
+      "description": "Division by zero should show error",
+      "input": "10\n0\n4",
+      "expectedOutput": "Error",
+      "isHidden": false
+    }
+  ],
+  "adaptationHints": {
+    "dyslexia": "Break each step into very small sub-steps. Use numbered lists extensively. Add visual markers between code and explanation.",
+    "autism": "Provide exact expected output for each step. List all possible edge cases explicitly. Use consistent terminology throughout.",
+    "adhd": "Add estimated completion time per section. Use gamification elements (progress percentage). Keep each section under 2 minutes of reading.",
+    "neurotypical": "Standard presentation is fine. Focus on clarity and good code examples."
+  }
+}
