@@ -211,6 +211,17 @@ export class PreferenceManager implements vscode.Disposable {
           </label>
         </section>
 
+        <section class="structural-prefs">
+          <h3>Task Structure</h3>
+          <label>Task Granularity:
+            <select id="taskGranularity">
+              <option value="combined" ${p.structural.taskGranularity === "combined" ? "selected" : ""}>Combined — broad milestones</option>
+              <option value="standard" ${p.structural.taskGranularity === "standard" ? "selected" : ""}>Standard — as written</option>
+              <option value="detailed" ${p.structural.taskGranularity === "detailed" ? "selected" : ""}>Detailed — atomic sub-steps</option>
+            </select>
+          </label>
+        </section>
+
         <section class="cognitive-prefs">
           <h3>Cognitive Support</h3>
           <label><input type="checkbox" id="focusMode" ${p.cognitive.focusMode ? "checked" : ""}> Focus Mode</label>

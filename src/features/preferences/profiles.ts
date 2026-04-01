@@ -33,6 +33,7 @@ export const NEURODIVERSITY_PROFILES: Record<NeurodiversityType, NeurodiversityP
         showCheckboxes: false,
         bulletStyle: "bullets",
         sectionCollapsible: false,
+        taskGranularity: "standard",
       },
       cognitive: {
         focusMode: false,
@@ -70,6 +71,7 @@ export const NEURODIVERSITY_PROFILES: Record<NeurodiversityType, NeurodiversityP
         showCheckboxes: true,
         bulletStyle: "numbers",
         sectionCollapsible: true,
+        taskGranularity: "detailed",
       },
       cognitive: {
         focusMode: false,
@@ -107,6 +109,7 @@ export const NEURODIVERSITY_PROFILES: Record<NeurodiversityType, NeurodiversityP
         showCheckboxes: true,
         bulletStyle: "numbers",
         sectionCollapsible: false,
+        taskGranularity: "detailed",
       },
       cognitive: {
         focusMode: true,
@@ -144,6 +147,7 @@ export const NEURODIVERSITY_PROFILES: Record<NeurodiversityType, NeurodiversityP
         showCheckboxes: true,
         bulletStyle: "icons",
         sectionCollapsible: true,
+        taskGranularity: "standard",
       },
       cognitive: {
         focusMode: true,

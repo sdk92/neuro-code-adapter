@@ -112,7 +112,18 @@ function buildAdaptationPrompt(request: AdaptationRequest): string {
   prompt += `- Chunk size: ${userPreferences.structural.chunkSize}\n`;
   prompt += `- Progressive disclosure: ${userPreferences.structural.progressiveDisclosure}\n`;
   prompt += `- Simplified language: ${userPreferences.cognitive.simplifiedLanguage}\n`;
-  prompt += `- Show examples: ${userPreferences.cognitive.showExamples}\n\n`;
+  prompt += `- Show examples: ${userPreferences.cognitive.showExamples}\n`;
+
+  const granularity = userPreferences.structural.taskGranularity;
+  prompt += `- Task granularity: ${granularity}\n`;
+  if (granularity === "combined") {
+    prompt += `  → Merge related task sections into broader milestones. Reduce the number of explicit steps; give the student a high-level goal and let them determine sub-steps themselves.\n`;
+  } else if (granularity === "detailed") {
+    prompt += `  → Break every task into the smallest possible atomic sub-steps. Each "What to do" item should be a single, concrete action. Add extra acceptance criteria so the student always knows when they are done.\n`;
+  } else {
+    prompt += `  → Keep the original task structure from the assignment without merging or splitting.\n`;
+  }
+  prompt += "\n";
 
   // Include session context if available
   if (sessionContext) {

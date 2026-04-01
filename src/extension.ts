@@ -62,6 +62,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         const apiKey = config.get<string>("anthropicApiKey", "");
         controller?.adaptationEngine.setApiKey(apiKey);
         controller?.assignmentManager.setApiKey(apiKey);
+        controller?.scaffoldEngine.setApiKey(apiKey);
       }
     })
   );
@@ -83,6 +84,7 @@ function registerCommands(
     ["neurocode.configurePreferences", () => ctrl.showPreferencesPanel()],
     ["neurocode.toggleAdaptiveMode", () => ctrl.toggleAdaptiveMode()],
     ["neurocode.getAIHelp", () => ctrl.requestAdaptation("help_request")],
+    ["neurocode.scaffoldProject", () => ctrl.requestScaffold()],
     ["neurocode.showDashboard", () => ctrl.showDashboard()],
     ["neurocode.exportProgress", async () => {
       try {

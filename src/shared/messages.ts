@@ -10,6 +10,7 @@ import type {
   Assignment,
   McpServerInfo,
   NeurodiversityType,
+  ScaffoldProgress,
   SessionContext,
   StruggleIndicator,
   UserPreferences,
@@ -27,7 +28,9 @@ export type ExtensionMessage =
   | { type: "struggle_detected"; indicator: StruggleIndicator }
   | { type: "mcp_status"; server: McpServerInfo }
   | { type: "error"; code: string; message: string }
-  | { type: "info"; message: string };
+  | { type: "info"; message: string }
+  | { type: "scaffold_progress"; progress: ScaffoldProgress }
+  | { type: "scaffold_approval_request"; toolUseId: string; command: string; cwd?: string };
 
 /**
  * Full extension state — sent to webview on initialization and on changes.
@@ -50,7 +53,6 @@ export type WebviewMessage =
   | { type: "ready" }
   | { type: "request_state" }
   | { type: "open_assignment"; filePath: string }
-  | { type: "import_assignment"; content: string }
   | { type: "request_adaptation"; sectionId?: string }
   | { type: "request_help"; question: string; sectionId?: string }
   | { type: "update_preferences"; preferences: Partial<UserPreferences> }
@@ -59,4 +61,6 @@ export type WebviewMessage =
   | { type: "section_viewed"; sectionId: string }
   | { type: "export_progress" }
   | { type: "connect_mcp"; url: string; transport?: "stdio" | "streamableHttp" }
-  | { type: "disconnect_mcp" };
+  | { type: "disconnect_mcp" }
+  | { type: "request_scaffold" }
+  | { type: "scaffold_approval_response"; toolUseId: string; approved: boolean };

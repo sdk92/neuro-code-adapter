@@ -2984,7 +2984,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve.call(this, root, ref);
+      let _sch = resolve2.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a3 = root.localRefs) === null || _a3 === void 0 ? void 0 : _a3[ref];
         const { schemaId } = this.opts;
@@ -3011,7 +3011,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve(root, ref) {
+    function resolve2(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3226,8 +3226,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path3) {
-      let input = path3;
+    function removeDotSegments(path4) {
+      let input = path4;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3426,8 +3426,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path3, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path3 && path3 !== "/" ? path3 : void 0;
+        const [path4, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path4 && path4 !== "/" ? path4 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -3586,7 +3586,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve(baseURI, relativeURI, options2) {
+    function resolve2(baseURI, relativeURI, options2) {
       const schemelessOptions = options2 ? Object.assign({ scheme: "null" }, options2) : { scheme: "null" };
       const resolved = resolveComponent(parse3(baseURI, schemelessOptions), parse3(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
@@ -3813,7 +3813,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve,
+      resolve: resolve2,
       resolveComponent,
       equal,
       serialize,
@@ -6808,7 +6808,7 @@ var require_windows = __commonJS({
     module2.exports = isexe;
     isexe.sync = sync;
     var fs3 = require("fs");
-    function checkPathExt(path3, options2) {
+    function checkPathExt(path4, options2) {
       var pathext = options2.pathExt !== void 0 ? options2.pathExt : process.env.PATHEXT;
       if (!pathext) {
         return true;
@@ -6819,25 +6819,25 @@ var require_windows = __commonJS({
       }
       for (var i2 = 0; i2 < pathext.length; i2++) {
         var p2 = pathext[i2].toLowerCase();
-        if (p2 && path3.substr(-p2.length).toLowerCase() === p2) {
+        if (p2 && path4.substr(-p2.length).toLowerCase() === p2) {
           return true;
         }
       }
       return false;
     }
-    function checkStat(stat, path3, options2) {
+    function checkStat(stat, path4, options2) {
       if (!stat.isSymbolicLink() && !stat.isFile()) {
         return false;
       }
-      return checkPathExt(path3, options2);
+      return checkPathExt(path4, options2);
     }
-    function isexe(path3, options2, cb) {
-      fs3.stat(path3, function(er2, stat) {
-        cb(er2, er2 ? false : checkStat(stat, path3, options2));
+    function isexe(path4, options2, cb) {
+      fs3.stat(path4, function(er2, stat) {
+        cb(er2, er2 ? false : checkStat(stat, path4, options2));
       });
     }
-    function sync(path3, options2) {
-      return checkStat(fs3.statSync(path3), path3, options2);
+    function sync(path4, options2) {
+      return checkStat(fs3.statSync(path4), path4, options2);
     }
   }
 });
@@ -6848,13 +6848,13 @@ var require_mode = __commonJS({
     module2.exports = isexe;
     isexe.sync = sync;
     var fs3 = require("fs");
-    function isexe(path3, options2, cb) {
-      fs3.stat(path3, function(er2, stat) {
+    function isexe(path4, options2, cb) {
+      fs3.stat(path4, function(er2, stat) {
         cb(er2, er2 ? false : checkStat(stat, options2));
       });
     }
-    function sync(path3, options2) {
-      return checkStat(fs3.statSync(path3), options2);
+    function sync(path4, options2) {
+      return checkStat(fs3.statSync(path4), options2);
     }
     function checkStat(stat, options2) {
       return stat.isFile() && checkMode(stat, options2);
@@ -6887,7 +6887,7 @@ var require_isexe = __commonJS({
     }
     module2.exports = isexe;
     isexe.sync = sync;
-    function isexe(path3, options2, cb) {
+    function isexe(path4, options2, cb) {
       if (typeof options2 === "function") {
         cb = options2;
         options2 = {};
@@ -6896,17 +6896,17 @@ var require_isexe = __commonJS({
         if (typeof Promise !== "function") {
           throw new TypeError("callback not provided");
         }
-        return new Promise(function(resolve, reject) {
-          isexe(path3, options2 || {}, function(er2, is) {
+        return new Promise(function(resolve2, reject) {
+          isexe(path4, options2 || {}, function(er2, is) {
             if (er2) {
               reject(er2);
             } else {
-              resolve(is);
+              resolve2(is);
             }
           });
         });
       }
-      core(path3, options2 || {}, function(er2, is) {
+      core(path4, options2 || {}, function(er2, is) {
         if (er2) {
           if (er2.code === "EACCES" || options2 && options2.ignoreErrors) {
             er2 = null;
@@ -6916,9 +6916,9 @@ var require_isexe = __commonJS({
         cb(er2, is);
       });
     }
-    function sync(path3, options2) {
+    function sync(path4, options2) {
       try {
-        return core.sync(path3, options2 || {});
+        return core.sync(path4, options2 || {});
       } catch (er2) {
         if (options2 && options2.ignoreErrors || er2.code === "EACCES") {
           return false;
@@ -6934,7 +6934,7 @@ var require_isexe = __commonJS({
 var require_which = __commonJS({
   "node_modules/which/which.js"(exports2, module2) {
     var isWindows = process.platform === "win32" || process.env.OSTYPE === "cygwin" || process.env.OSTYPE === "msys";
-    var path3 = require("path");
+    var path4 = require("path");
     var COLON = isWindows ? ";" : ":";
     var isexe = require_isexe();
     var getNotFoundError = (cmd) => Object.assign(new Error(`not found: ${cmd}`), { code: "ENOENT" });
@@ -6967,27 +6967,27 @@ var require_which = __commonJS({
         opt = {};
       const { pathEnv, pathExt, pathExtExe } = getPathInfo(cmd, opt);
       const found = [];
-      const step = (i2) => new Promise((resolve, reject) => {
+      const step = (i2) => new Promise((resolve2, reject) => {
         if (i2 === pathEnv.length)
-          return opt.all && found.length ? resolve(found) : reject(getNotFoundError(cmd));
+          return opt.all && found.length ? resolve2(found) : reject(getNotFoundError(cmd));
         const ppRaw = pathEnv[i2];
         const pathPart = /^".*"$/.test(ppRaw) ? ppRaw.slice(1, -1) : ppRaw;
-        const pCmd = path3.join(pathPart, cmd);
+        const pCmd = path4.join(pathPart, cmd);
         const p2 = !pathPart && /^\.[\\\/]/.test(cmd) ? cmd.slice(0, 2) + pCmd : pCmd;
-        resolve(subStep(p2, i2, 0));
+        resolve2(subStep(p2, i2, 0));
       });
-      const subStep = (p2, i2, ii) => new Promise((resolve, reject) => {
+      const subStep = (p2, i2, ii) => new Promise((resolve2, reject) => {
         if (ii === pathExt.length)
-          return resolve(step(i2 + 1));
+          return resolve2(step(i2 + 1));
         const ext = pathExt[ii];
         isexe(p2 + ext, { pathExt: pathExtExe }, (er2, is) => {
           if (!er2 && is) {
             if (opt.all)
               found.push(p2 + ext);
             else
-              return resolve(p2 + ext);
+              return resolve2(p2 + ext);
           }
-          return resolve(subStep(p2, i2, ii + 1));
+          return resolve2(subStep(p2, i2, ii + 1));
         });
       });
       return cb ? step(0).then((res) => cb(null, res), cb) : step(0);
@@ -6999,7 +6999,7 @@ var require_which = __commonJS({
       for (let i2 = 0; i2 < pathEnv.length; i2++) {
         const ppRaw = pathEnv[i2];
         const pathPart = /^".*"$/.test(ppRaw) ? ppRaw.slice(1, -1) : ppRaw;
-        const pCmd = path3.join(pathPart, cmd);
+        const pCmd = path4.join(pathPart, cmd);
         const p2 = !pathPart && /^\.[\\\/]/.test(cmd) ? cmd.slice(0, 2) + pCmd : pCmd;
         for (let j2 = 0; j2 < pathExt.length; j2++) {
           const cur = p2 + pathExt[j2];
@@ -7047,7 +7047,7 @@ var require_path_key = __commonJS({
 var require_resolveCommand = __commonJS({
   "node_modules/cross-spawn/lib/util/resolveCommand.js"(exports2, module2) {
     "use strict";
-    var path3 = require("path");
+    var path4 = require("path");
     var which = require_which();
     var getPathKey = require_path_key();
     function resolveCommandAttempt(parsed, withoutPathExt) {
@@ -7065,7 +7065,7 @@ var require_resolveCommand = __commonJS({
       try {
         resolved = which.sync(parsed.command, {
           path: env[getPathKey({ env })],
-          pathExt: withoutPathExt ? path3.delimiter : void 0
+          pathExt: withoutPathExt ? path4.delimiter : void 0
         });
       } catch (e2) {
       } finally {
@@ -7074,7 +7074,7 @@ var require_resolveCommand = __commonJS({
         }
       }
       if (resolved) {
-        resolved = path3.resolve(hasCustomCwd ? parsed.options.cwd : "", resolved);
+        resolved = path4.resolve(hasCustomCwd ? parsed.options.cwd : "", resolved);
       }
       return resolved;
     }
@@ -7128,8 +7128,8 @@ var require_shebang_command = __commonJS({
       if (!match) {
         return null;
       }
-      const [path3, argument] = match[0].replace(/#! ?/, "").split(" ");
-      const binary = path3.split("/").pop();
+      const [path4, argument] = match[0].replace(/#! ?/, "").split(" ");
+      const binary = path4.split("/").pop();
       if (binary === "env") {
         return argument;
       }
@@ -7164,7 +7164,7 @@ var require_readShebang = __commonJS({
 var require_parse = __commonJS({
   "node_modules/cross-spawn/lib/parse.js"(exports2, module2) {
     "use strict";
-    var path3 = require("path");
+    var path4 = require("path");
     var resolveCommand = require_resolveCommand();
     var escape3 = require_escape();
     var readShebang = require_readShebang();
@@ -7189,7 +7189,7 @@ var require_parse = __commonJS({
       const needsShell = !isExecutableRegExp.test(commandFile);
       if (parsed.options.forceShell || needsShell) {
         const needsDoubleEscapeMetaChars = isCmdShimRegExp.test(commandFile);
-        parsed.command = path3.normalize(parsed.command);
+        parsed.command = path4.normalize(parsed.command);
         parsed.command = escape3.command(parsed.command);
         parsed.args = parsed.args.map((arg) => escape3.argument(arg, needsDoubleEscapeMetaChars));
         const shellCommand = [parsed.command].concat(parsed.args).join(" ");
@@ -8031,14 +8031,14 @@ var require_url_state_machine = __commonJS({
       return url2.replace(/\u0009|\u000A|\u000D/g, "");
     }
     function shortenPath(url2) {
-      const path3 = url2.path;
-      if (path3.length === 0) {
+      const path4 = url2.path;
+      if (path4.length === 0) {
         return;
       }
-      if (url2.scheme === "file" && path3.length === 1 && isNormalizedWindowsDriveLetter(path3[0])) {
+      if (url2.scheme === "file" && path4.length === 1 && isNormalizedWindowsDriveLetter(path4[0])) {
         return;
       }
-      path3.pop();
+      path4.pop();
     }
     function includesCredentials(url2) {
       return url2.username !== "" || url2.password !== "";
@@ -9358,7 +9358,7 @@ var require_lib2 = __commonJS({
       let accum = [];
       let accumBytes = 0;
       let abort = false;
-      return new Body.Promise(function(resolve, reject) {
+      return new Body.Promise(function(resolve2, reject) {
         let resTimeout;
         if (_this4.timeout) {
           resTimeout = setTimeout(function() {
@@ -9392,7 +9392,7 @@ var require_lib2 = __commonJS({
           }
           clearTimeout(resTimeout);
           try {
-            resolve(Buffer.concat(accum, accumBytes));
+            resolve2(Buffer.concat(accum, accumBytes));
           } catch (err) {
             reject(new FetchError(`Could not create Buffer from response body for ${_this4.url}: ${err.message}`, "system", err));
           }
@@ -10067,7 +10067,7 @@ var require_lib2 = __commonJS({
         throw new Error("native promise missing, set fetch.Promise to your favorite alternative");
       }
       Body.Promise = fetch3.Promise;
-      return new fetch3.Promise(function(resolve, reject) {
+      return new fetch3.Promise(function(resolve2, reject) {
         const request = new Request3(url2, opts);
         const options2 = getNodeRequestOptions(request);
         const send = (options2.protocol === "https:" ? https : http).request;
@@ -10200,7 +10200,7 @@ var require_lib2 = __commonJS({
                   requestOpts.body = void 0;
                   requestOpts.headers.delete("content-length");
                 }
-                resolve(fetch3(new Request3(locationURL, requestOpts)));
+                resolve2(fetch3(new Request3(locationURL, requestOpts)));
                 finalize2();
                 return;
             }
@@ -10221,7 +10221,7 @@ var require_lib2 = __commonJS({
           const codings = headers.get("Content-Encoding");
           if (!request.compress || request.method === "HEAD" || codings === null || res.statusCode === 204 || res.statusCode === 304) {
             response = new Response4(body, response_options);
-            resolve(response);
+            resolve2(response);
             return;
           }
           const zlibOptions = {
@@ -10231,7 +10231,7 @@ var require_lib2 = __commonJS({
           if (codings == "gzip" || codings == "x-gzip") {
             body = body.pipe(zlib.createGunzip(zlibOptions));
             response = new Response4(body, response_options);
-            resolve(response);
+            resolve2(response);
             return;
           }
           if (codings == "deflate" || codings == "x-deflate") {
@@ -10243,12 +10243,12 @@ var require_lib2 = __commonJS({
                 body = body.pipe(zlib.createInflateRaw());
               }
               response = new Response4(body, response_options);
-              resolve(response);
+              resolve2(response);
             });
             raw.on("end", function() {
               if (!response) {
                 response = new Response4(body, response_options);
-                resolve(response);
+                resolve2(response);
               }
             });
             return;
@@ -10256,11 +10256,11 @@ var require_lib2 = __commonJS({
           if (codings == "br" && typeof zlib.createBrotliDecompress === "function") {
             body = body.pipe(zlib.createBrotliDecompress());
             response = new Response4(body, response_options);
-            resolve(response);
+            resolve2(response);
             return;
           }
           response = new Response4(body, response_options);
-          resolve(response);
+          resolve2(response);
         });
         writeToStream(req, request);
       });
@@ -13617,14 +13617,14 @@ __export(fileFromPath_exports, {
   fileFromPathSync: () => fileFromPathSync,
   isFile: () => isFile
 });
-function createFileFromPath(path3, { mtimeMs, size }, filenameOrOptions, options2 = {}) {
+function createFileFromPath(path4, { mtimeMs, size }, filenameOrOptions, options2 = {}) {
   let filename;
   if (isPlainObject_default2(filenameOrOptions)) {
     [options2, filename] = [filenameOrOptions, void 0];
   } else {
     filename = filenameOrOptions;
   }
-  const file2 = new FileFromPath({ path: path3, size, lastModified: mtimeMs });
+  const file2 = new FileFromPath({ path: path4, size, lastModified: mtimeMs });
   if (!filename) {
     filename = file2.name;
   }
@@ -13633,13 +13633,13 @@ function createFileFromPath(path3, { mtimeMs, size }, filenameOrOptions, options
     lastModified: file2.lastModified
   });
 }
-function fileFromPathSync(path3, filenameOrOptions, options2 = {}) {
-  const stats = (0, import_fs.statSync)(path3);
-  return createFileFromPath(path3, stats, filenameOrOptions, options2);
+function fileFromPathSync(path4, filenameOrOptions, options2 = {}) {
+  const stats = (0, import_fs.statSync)(path4);
+  return createFileFromPath(path4, stats, filenameOrOptions, options2);
 }
-async function fileFromPath2(path3, filenameOrOptions, options2) {
-  const stats = await import_fs.promises.stat(path3);
-  return createFileFromPath(path3, stats, filenameOrOptions, options2);
+async function fileFromPath2(path4, filenameOrOptions, options2) {
+  const stats = await import_fs.promises.stat(path4);
+  return createFileFromPath(path4, stats, filenameOrOptions, options2);
 }
 var import_fs, import_path, import_node_domexception, __classPrivateFieldSet4, __classPrivateFieldGet5, _FileFromPath_path, _FileFromPath_start, MESSAGE, FileFromPath;
 var init_fileFromPath = __esm({
@@ -13706,7 +13706,7 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode5 = __toESM(require("vscode"));
+var vscode7 = __toESM(require("vscode"));
 
 // src/shared/logger.ts
 var outputChannel;
@@ -13900,7 +13900,7 @@ var WebviewManager = class {
 };
 
 // src/core/controller/NeurocodeController.ts
-var vscode4 = __toESM(require("vscode"));
+var vscode6 = __toESM(require("vscode"));
 
 // src/core/context/ActivityTracker.ts
 var vscode = __toESM(require("vscode"));
@@ -14146,8 +14146,8 @@ var StruggleDetector = class {
     const editsByFile = /* @__PURE__ */ new Map();
     for (const event of events) {
       if (event.type === "file_edit" && event.data.filePath) {
-        const path3 = event.data.filePath;
-        editsByFile.set(path3, (editsByFile.get(path3) ?? 0) + 1);
+        const path4 = event.data.filePath;
+        editsByFile.set(path4, (editsByFile.get(path4) ?? 0) + 1);
       }
     }
     for (const [filePath, count] of editsByFile) {
@@ -14748,8 +14748,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path3, errorMaps, issueData } = params;
-  const fullPath = [...path3, ...issueData.path || []];
+  const { data, path: path4, errorMaps, issueData } = params;
+  const fullPath = [...path4, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -14864,11 +14864,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path3, key) {
+  constructor(parent, value, path4, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path3;
+    this._path = path4;
     this._key = key;
   }
   get path() {
@@ -18514,10 +18514,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path3) {
-  if (!path3)
+function getElementAtPath(obj, path4) {
+  if (!path4)
     return obj;
-  return path3.reduce((acc, key) => acc?.[key], obj);
+  return path4.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -18900,11 +18900,11 @@ function aborted(x2, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path3, issues) {
+function prefixIssues(path4, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path3);
+    iss.path.unshift(path4);
     return iss;
   });
 }
@@ -27249,7 +27249,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+        await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
         options2?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -27266,7 +27266,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options2) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options2 ?? {};
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       const earlyReject = (error2) => {
         reject(error2);
       };
@@ -27344,7 +27344,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve(parseResult.data);
+            resolve2(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -27605,12 +27605,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve, interval);
+      const timeoutId = setTimeout(resolve2, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -28561,7 +28561,7 @@ var StdioClientTransport = class {
     if (this._process) {
       throw new Error("StdioClientTransport already started! If using Client class, note that connect() calls start() automatically.");
     }
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       this._process = (0, import_cross_spawn.default)(this._serverParams.command, this._serverParams.args ?? [], {
         // merge default env with server env because mcp server needs some env vars
         env: {
@@ -28578,7 +28578,7 @@ var StdioClientTransport = class {
         this.onerror?.(error2);
       });
       this._process.on("spawn", () => {
-        resolve();
+        resolve2();
       });
       this._process.on("close", (_code) => {
         this._process = void 0;
@@ -28637,22 +28637,22 @@ var StdioClientTransport = class {
     if (this._process) {
       const processToClose = this._process;
       this._process = void 0;
-      const closePromise = new Promise((resolve) => {
+      const closePromise = new Promise((resolve2) => {
         processToClose.once("close", () => {
-          resolve();
+          resolve2();
         });
       });
       try {
         processToClose.stdin?.end();
       } catch {
       }
-      await Promise.race([closePromise, new Promise((resolve) => setTimeout(resolve, 2e3).unref())]);
+      await Promise.race([closePromise, new Promise((resolve2) => setTimeout(resolve2, 2e3).unref())]);
       if (processToClose.exitCode === null) {
         try {
           processToClose.kill("SIGTERM");
         } catch {
         }
-        await Promise.race([closePromise, new Promise((resolve) => setTimeout(resolve, 2e3).unref())]);
+        await Promise.race([closePromise, new Promise((resolve2) => setTimeout(resolve2, 2e3).unref())]);
       }
       if (processToClose.exitCode === null) {
         try {
@@ -28664,15 +28664,15 @@ var StdioClientTransport = class {
     this._readBuffer.clear();
   }
   send(message) {
-    return new Promise((resolve) => {
+    return new Promise((resolve2) => {
       if (!this._process?.stdin) {
         throw new Error("Not connected");
       }
       const json2 = serializeMessage(message);
       if (this._process.stdin.write(json2)) {
-        resolve();
+        resolve2();
       } else {
-        this._process.stdin.once("drain", resolve);
+        this._process.stdin.once("drain", resolve2);
       }
     });
   }
@@ -30721,13 +30721,13 @@ var MultipartBody = class {
 // node_modules/@anthropic-ai/sdk/_shims/node-runtime.mjs
 var import_web = require("node:stream/web");
 var fileFromPathWarned = false;
-async function fileFromPath3(path3, ...args) {
+async function fileFromPath3(path4, ...args) {
   const { fileFromPath: _fileFromPath } = await Promise.resolve().then(() => (init_fileFromPath(), fileFromPath_exports));
   if (!fileFromPathWarned) {
-    console.warn(`fileFromPath is deprecated; use fs.createReadStream(${JSON.stringify(path3)}) instead`);
+    console.warn(`fileFromPath is deprecated; use fs.createReadStream(${JSON.stringify(path4)}) instead`);
     fileFromPathWarned = true;
   }
-  return await _fileFromPath(path3, ...args);
+  return await _fileFromPath(path4, ...args);
 }
 var defaultHttpAgent = new import_agentkeepalive.default({ keepAlive: true, timeout: 5 * 60 * 1e3 });
 var defaultHttpsAgent = new import_agentkeepalive.default.HttpsAgent({ keepAlive: true, timeout: 5 * 60 * 1e3 });
@@ -31349,8 +31349,8 @@ function _addRequestID(value, response) {
 }
 var APIPromise = class _APIPromise extends Promise {
   constructor(responsePromise, parseResponse = defaultParseResponse) {
-    super((resolve) => {
-      resolve(null);
+    super((resolve2) => {
+      resolve2(null);
     });
     this.responsePromise = responsePromise;
     this.parseResponse = parseResponse;
@@ -31451,29 +31451,29 @@ var APIClient = class {
   defaultIdempotencyKey() {
     return `stainless-node-retry-${uuid42()}`;
   }
-  get(path3, opts) {
-    return this.methodRequest("get", path3, opts);
+  get(path4, opts) {
+    return this.methodRequest("get", path4, opts);
   }
-  post(path3, opts) {
-    return this.methodRequest("post", path3, opts);
+  post(path4, opts) {
+    return this.methodRequest("post", path4, opts);
   }
-  patch(path3, opts) {
-    return this.methodRequest("patch", path3, opts);
+  patch(path4, opts) {
+    return this.methodRequest("patch", path4, opts);
   }
-  put(path3, opts) {
-    return this.methodRequest("put", path3, opts);
+  put(path4, opts) {
+    return this.methodRequest("put", path4, opts);
   }
-  delete(path3, opts) {
-    return this.methodRequest("delete", path3, opts);
+  delete(path4, opts) {
+    return this.methodRequest("delete", path4, opts);
   }
-  methodRequest(method, path3, opts) {
+  methodRequest(method, path4, opts) {
     return this.request(Promise.resolve(opts).then(async (opts2) => {
       const body = opts2 && isBlobLike(opts2?.body) ? new DataView(await opts2.body.arrayBuffer()) : opts2?.body instanceof DataView ? opts2.body : opts2?.body instanceof ArrayBuffer ? new DataView(opts2.body) : opts2 && ArrayBuffer.isView(opts2?.body) ? new DataView(opts2.body.buffer) : opts2?.body;
-      return { method, path: path3, ...opts2, body };
+      return { method, path: path4, ...opts2, body };
     }));
   }
-  getAPIList(path3, Page2, opts) {
-    return this.requestAPIList(Page2, { method: "get", path: path3, ...opts });
+  getAPIList(path4, Page2, opts) {
+    return this.requestAPIList(Page2, { method: "get", path: path4, ...opts });
   }
   calculateContentLength(body) {
     if (typeof body === "string") {
@@ -31492,10 +31492,10 @@ var APIClient = class {
   }
   buildRequest(options2, { retryCount = 0 } = {}) {
     options2 = { ...options2 };
-    const { method, path: path3, query, headers = {} } = options2;
+    const { method, path: path4, query, headers = {} } = options2;
     const body = ArrayBuffer.isView(options2.body) || options2.__binaryRequest && typeof options2.body === "string" ? options2.body : isMultipartBody(options2.body) ? options2.body.body : options2.body ? JSON.stringify(options2.body, null, 2) : null;
     const contentLength = this.calculateContentLength(body);
-    const url2 = this.buildURL(path3, query);
+    const url2 = this.buildURL(path4, query);
     if ("timeout" in options2)
       validatePositiveInteger("timeout", options2.timeout);
     options2.timeout = options2.timeout ?? this.timeout;
@@ -31619,8 +31619,8 @@ var APIClient = class {
     const request = this.makeRequest(options2, null);
     return new PagePromise(this, request, Page2);
   }
-  buildURL(path3, query) {
-    const url2 = isAbsoluteURL(path3) ? new URL(path3) : new URL(this.baseURL + (this.baseURL.endsWith("/") && path3.startsWith("/") ? path3.slice(1) : path3));
+  buildURL(path4, query) {
+    const url2 = isAbsoluteURL(path4) ? new URL(path4) : new URL(this.baseURL + (this.baseURL.endsWith("/") && path4.startsWith("/") ? path4.slice(1) : path4));
     const defaultQuery = this.defaultQuery();
     if (!isEmptyObj(defaultQuery)) {
       query = { ...defaultQuery, ...query };
@@ -31942,7 +31942,7 @@ var startsWithSchemeRegexp = /^[a-z][a-z0-9+.-]*:/i;
 var isAbsoluteURL = (url2) => {
   return startsWithSchemeRegexp.test(url2);
 };
-var sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+var sleep = (ms) => new Promise((resolve2) => setTimeout(resolve2, ms));
 var validatePositiveInteger = (name, n2) => {
   if (typeof n2 !== "number" || !Number.isInteger(n2)) {
     throw new AnthropicError(`${name} must be an integer`);
@@ -32555,12 +32555,12 @@ var BetaMessageStream = class _BetaMessageStream {
       }
       return this._emit("error", new AnthropicError(String(error2)));
     });
-    __classPrivateFieldSet7(this, _BetaMessageStream_connectedPromise, new Promise((resolve, reject) => {
-      __classPrivateFieldSet7(this, _BetaMessageStream_resolveConnectedPromise, resolve, "f");
+    __classPrivateFieldSet7(this, _BetaMessageStream_connectedPromise, new Promise((resolve2, reject) => {
+      __classPrivateFieldSet7(this, _BetaMessageStream_resolveConnectedPromise, resolve2, "f");
       __classPrivateFieldSet7(this, _BetaMessageStream_rejectConnectedPromise, reject, "f");
     }), "f");
-    __classPrivateFieldSet7(this, _BetaMessageStream_endPromise, new Promise((resolve, reject) => {
-      __classPrivateFieldSet7(this, _BetaMessageStream_resolveEndPromise, resolve, "f");
+    __classPrivateFieldSet7(this, _BetaMessageStream_endPromise, new Promise((resolve2, reject) => {
+      __classPrivateFieldSet7(this, _BetaMessageStream_resolveEndPromise, resolve2, "f");
       __classPrivateFieldSet7(this, _BetaMessageStream_rejectEndPromise, reject, "f");
     }), "f");
     __classPrivateFieldGet8(this, _BetaMessageStream_connectedPromise, "f").catch(() => {
@@ -32718,11 +32718,11 @@ var BetaMessageStream = class _BetaMessageStream {
    *   const message = await stream.emitted('message') // rejects if the stream errors
    */
   emitted(event) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       __classPrivateFieldSet7(this, _BetaMessageStream_catchingPromiseCreated, true, "f");
       if (event !== "error")
         this.once("error", reject);
-      this.once(event, resolve);
+      this.once(event, resolve2);
     });
   }
   async done() {
@@ -33006,7 +33006,7 @@ var BetaMessageStream = class _BetaMessageStream {
           if (done) {
             return { value: void 0, done: true };
           }
-          return new Promise((resolve, reject) => readQueue.push({ resolve, reject })).then((chunk2) => chunk2 ? { value: chunk2, done: false } : { value: void 0, done: true });
+          return new Promise((resolve2, reject) => readQueue.push({ resolve: resolve2, reject })).then((chunk2) => chunk2 ? { value: chunk2, done: false } : { value: void 0, done: true });
         }
         const chunk = pushQueue.shift();
         return { value: chunk, done: false };
@@ -33280,12 +33280,12 @@ var MessageStream = class _MessageStream {
       }
       return this._emit("error", new AnthropicError(String(error2)));
     });
-    __classPrivateFieldSet8(this, _MessageStream_connectedPromise, new Promise((resolve, reject) => {
-      __classPrivateFieldSet8(this, _MessageStream_resolveConnectedPromise, resolve, "f");
+    __classPrivateFieldSet8(this, _MessageStream_connectedPromise, new Promise((resolve2, reject) => {
+      __classPrivateFieldSet8(this, _MessageStream_resolveConnectedPromise, resolve2, "f");
       __classPrivateFieldSet8(this, _MessageStream_rejectConnectedPromise, reject, "f");
     }), "f");
-    __classPrivateFieldSet8(this, _MessageStream_endPromise, new Promise((resolve, reject) => {
-      __classPrivateFieldSet8(this, _MessageStream_resolveEndPromise, resolve, "f");
+    __classPrivateFieldSet8(this, _MessageStream_endPromise, new Promise((resolve2, reject) => {
+      __classPrivateFieldSet8(this, _MessageStream_resolveEndPromise, resolve2, "f");
       __classPrivateFieldSet8(this, _MessageStream_rejectEndPromise, reject, "f");
     }), "f");
     __classPrivateFieldGet9(this, _MessageStream_connectedPromise, "f").catch(() => {
@@ -33443,11 +33443,11 @@ var MessageStream = class _MessageStream {
    *   const message = await stream.emitted('message') // rejects if the stream errors
    */
   emitted(event) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       __classPrivateFieldSet8(this, _MessageStream_catchingPromiseCreated, true, "f");
       if (event !== "error")
         this.once("error", reject);
-      this.once(event, resolve);
+      this.once(event, resolve2);
     });
   }
   async done() {
@@ -33731,7 +33731,7 @@ var MessageStream = class _MessageStream {
           if (done) {
             return { value: void 0, done: true };
           }
-          return new Promise((resolve, reject) => readQueue.push({ resolve, reject })).then((chunk2) => chunk2 ? { value: chunk2, done: false } : { value: void 0, done: true });
+          return new Promise((resolve2, reject) => readQueue.push({ resolve: resolve2, reject })).then((chunk2) => chunk2 ? { value: chunk2, done: false } : { value: void 0, done: true });
         }
         const chunk = pushQueue.shift();
         return { value: chunk, done: false };
@@ -37888,6 +37888,417 @@ var PROFILE_CSS = `
   .nc-profile-adhd .nc-section-header h2 { color: var(--nc-accent-color); }
 `;
 
+// src/features/scaffold/ScaffoldEngine.ts
+var vscode5 = __toESM(require("vscode"));
+var path3 = __toESM(require("path"));
+
+// src/features/scaffold/CommandExecutor.ts
+var vscode4 = __toESM(require("vscode"));
+var CommandExecutor = class {
+  terminal;
+  /**
+   * Execute a command in the dedicated NeuroCode terminal.
+   * Returns stdout/stderr as a combined string.
+   */
+  async execute(command, cwd) {
+    const terminal = this.getOrCreateTerminal(cwd);
+    if (terminal.shellIntegration) {
+      return this.executeWithShellIntegration(terminal, command);
+    }
+    return this.executeFireAndForget(terminal, command);
+  }
+  async executeWithShellIntegration(terminal, command) {
+    return new Promise((resolve2) => {
+      const execution = terminal.shellIntegration.executeCommand(command);
+      const outputChunks = [];
+      const stream = execution.read();
+      void (async () => {
+        for await (const chunk of stream) {
+          outputChunks.push(chunk);
+        }
+        const exitCode = execution.exitCode ?? 0;
+        resolve2({ output: outputChunks.join(""), exitCode });
+      })();
+    });
+  }
+  async executeFireAndForget(terminal, command) {
+    terminal.sendText(command, true);
+    await new Promise((r2) => setTimeout(r2, 500));
+    Logger.log(`[CommandExecutor] Sent (no shell integration): ${command}`);
+    return { output: "(command sent to terminal \u2014 check terminal for output)", exitCode: 0 };
+  }
+  getOrCreateTerminal(cwd) {
+    if (this.terminal && !this.isTerminalClosed(this.terminal)) {
+      if (cwd) {
+        this.terminal.sendText(`cd "${cwd}"`, true);
+      }
+      return this.terminal;
+    }
+    this.terminal = vscode4.window.createTerminal({
+      name: "NeuroCode Scaffold",
+      cwd,
+      iconPath: new vscode4.ThemeIcon("rocket")
+    });
+    this.terminal.show(true);
+    return this.terminal;
+  }
+  isTerminalClosed(terminal) {
+    return !vscode4.window.terminals.includes(terminal);
+  }
+  dispose() {
+    this.terminal?.dispose();
+    this.terminal = void 0;
+  }
+};
+
+// src/features/scaffold/ScaffoldToolBuilder.ts
+var EXECUTE_COMMAND_TOOL = {
+  name: "execute_command",
+  description: "Run a shell command to scaffold the project (e.g. create-react-app, dotnet new, cargo init). Always prefer official project-creation CLIs. Keep commands non-interactive (use --yes / -y flags). Each command call must do one logical step only.",
+  input_schema: {
+    type: "object",
+    properties: {
+      command: {
+        type: "string",
+        description: "The shell command to execute"
+      },
+      cwd: {
+        type: "string",
+        description: "Working directory for the command (optional, defaults to workspace root)"
+      },
+      description: {
+        type: "string",
+        description: "One-line human-readable description of what this command does"
+      }
+    },
+    required: ["command", "description"]
+  }
+};
+var CREATE_FILE_TOOL = {
+  name: "create_file",
+  description: "Create or overwrite a file with the given content. Use this to add starter code, config files, or README. Prefer this over running echo/cat in execute_command.",
+  input_schema: {
+    type: "object",
+    properties: {
+      path: {
+        type: "string",
+        description: "Relative file path from the workspace root"
+      },
+      content: {
+        type: "string",
+        description: "Full file content"
+      },
+      description: {
+        type: "string",
+        description: "One-line description of what this file is"
+      }
+    },
+    required: ["path", "content", "description"]
+  }
+};
+var OPEN_IN_EDITOR_TOOL = {
+  name: "open_in_editor",
+  description: "Open a file in the VS Code editor after scaffolding is complete. Call this last, for the file the student should start editing.",
+  input_schema: {
+    type: "object",
+    properties: {
+      path: {
+        type: "string",
+        description: "Relative file path from the workspace root to open"
+      }
+    },
+    required: ["path"]
+  }
+};
+var LANGUAGE_HINTS = {
+  typescript: "Use `npm create vite@latest -- --template vanilla-ts` or `npx create-react-app --template typescript`.",
+  javascript: "Use `npm create vite@latest -- --template vanilla` or `npx create-react-app`.",
+  python: "Use `python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt` pattern.",
+  csharp: "Use `dotnet new <template>` (console / webapi / mvc / xunit etc.).",
+  java: "Use `mvn archetype:generate -DinteractiveMode=false` or `gradle init --type java-application`.",
+  rust: "Use `cargo init` or `cargo new <name>`.",
+  go: "Use `go mod init <module>` then create main.go.",
+  cpp: "Create CMakeLists.txt + src/main.cpp structure."
+};
+var TAG_HINTS = {
+  react: "Bootstrap with `npm create vite@latest -- --template react-ts` (TypeScript) or `--template react`.",
+  vue: "Bootstrap with `npm create vite@latest -- --template vue-ts`.",
+  express: "Use `npm init -y && npm install express`.",
+  fastapi: "Use `pip install fastapi uvicorn` and create main.py with a starter FastAPI app.",
+  django: "Use `django-admin startproject <name> .`.",
+  flask: "Use `pip install flask` and create app.py.",
+  nextjs: "Use `npx create-next-app@latest --ts --no-git`.",
+  jest: "Add `npm install --save-dev jest @types/jest ts-jest`.",
+  pytest: "Add `pip install pytest`."
+};
+function buildToolsForAssignment(assignment) {
+  const lang = assignment.metadata.language?.toLowerCase() ?? "";
+  const tags = (assignment.metadata.tags ?? []).map((t2) => t2.toLowerCase());
+  const hints = [];
+  const langHint = LANGUAGE_HINTS[lang];
+  if (langHint) {
+    hints.push(langHint);
+  }
+  for (const tag2 of tags) {
+    const tagHint = TAG_HINTS[tag2];
+    if (tagHint) {
+      hints.push(tagHint);
+    }
+  }
+  const patchedExecuteTool = hints.length > 0 ? {
+    ...EXECUTE_COMMAND_TOOL,
+    description: EXECUTE_COMMAND_TOOL.description + "\n\nPreferred commands for this assignment:\n" + hints.map((h2) => `- ${h2}`).join("\n")
+  } : EXECUTE_COMMAND_TOOL;
+  const tools = [
+    patchedExecuteTool,
+    CREATE_FILE_TOOL,
+    OPEN_IN_EDITOR_TOOL
+  ];
+  const systemHint = buildSystemHint(assignment, lang, tags, hints);
+  return { tools, systemHint };
+}
+function buildSystemHint(assignment, lang, tags, hints) {
+  const lines = [
+    `Assignment: "${assignment.metadata.title}"`,
+    `Language: ${lang || "not specified"}`,
+    tags.length > 0 ? `Tags/frameworks: ${tags.join(", ")}` : "",
+    `Difficulty: ${assignment.metadata.difficulty}`,
+    `Estimated time: ${assignment.metadata.estimatedMinutes} minutes`,
+    "",
+    "Your task is to scaffold a starter project for this assignment using the tools provided.",
+    "Rules:",
+    "1. Use execute_command for CLI scaffolding steps.",
+    "2. Use create_file to add or overwrite individual source files.",
+    "3. Use open_in_editor ONCE at the very end to open the main entry-point file.",
+    "4. Keep commands non-interactive (pass --yes, -y, or equivalent flags).",
+    "5. Prefer minimal, correct scaffolding over feature-rich boilerplate.",
+    "6. When done, call open_in_editor on the file the student should start editing.",
+    hints.length > 0 ? `
+Preferred tooling hints:
+${hints.map((h2) => `- ${h2}`).join("\n")}` : ""
+  ];
+  return lines.filter(Boolean).join("\n");
+}
+
+// src/features/scaffold/ScaffoldEngine.ts
+var MAX_ITERATIONS = 20;
+var ScaffoldEngine = class {
+  anthropic;
+  executor;
+  inProgress = false;
+  constructor() {
+    this.executor = new CommandExecutor();
+  }
+  setApiKey(apiKey) {
+    this.anthropic = new sdk_default({ apiKey });
+  }
+  get isAvailable() {
+    return !!this.anthropic;
+  }
+  /**
+   * Run the scaffolding agentic loop.
+   * Sends the assignment context + tools to Claude, then executes each
+   * tool_use block (with user approval) until Claude signals end_turn.
+   */
+  async run(request, onProgress) {
+    if (!this.anthropic) {
+      throw new Error("No API key configured. Set neurocode.anthropicApiKey in settings.");
+    }
+    if (this.inProgress) {
+      throw new Error("Scaffolding already in progress.");
+    }
+    this.inProgress = true;
+    try {
+      await this.agenticLoop(request, onProgress);
+    } finally {
+      this.inProgress = false;
+    }
+  }
+  async agenticLoop(request, onProgress) {
+    const { tools, systemHint } = buildToolsForAssignment(request.assignment);
+    const systemPrompt = [
+      "You are NeuroCode Scaffold, a programming tutor assistant that creates project skeletons for students.",
+      systemHint,
+      "",
+      "Think step by step. Use tools one at a time. Do not explain yourself \u2014 just call tools.",
+      "When the project is ready, call open_in_editor on the main entry file, then stop."
+    ].join("\n");
+    const userMessage = buildScaffoldPrompt(request);
+    const messages = [
+      { role: "user", content: userMessage }
+    ];
+    onProgress("Starting scaffolding...", false);
+    for (let i2 = 0; i2 < MAX_ITERATIONS; i2++) {
+      const response = await this.anthropic.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 4096,
+        system: systemPrompt,
+        tools,
+        messages
+      });
+      Logger.log(`[ScaffoldEngine] Iteration ${i2 + 1}, stop_reason: ${response.stop_reason}`);
+      const toolUseBlocks = response.content.filter(
+        (b2) => b2.type === "tool_use"
+      );
+      if (response.stop_reason === "end_turn" || toolUseBlocks.length === 0) {
+        onProgress("Scaffolding complete.", true);
+        break;
+      }
+      messages.push({ role: "assistant", content: response.content });
+      const toolResults = [];
+      for (const block2 of toolUseBlocks) {
+        const result = await this.executeTool(block2, request.workspaceRoot, onProgress);
+        toolResults.push({
+          type: "tool_result",
+          tool_use_id: block2.id,
+          content: result.success ? result.output : `ERROR: ${result.error}`
+        });
+        if (!result.success) {
+          Logger.warn(`[ScaffoldEngine] Tool ${block2.name} failed: ${result.error}`);
+        }
+      }
+      messages.push({ role: "user", content: toolResults });
+    }
+  }
+  /**
+   * Dispatch a single tool_use block to the correct handler.
+   * Every tool call shows a VS Code confirmation dialog first.
+   */
+  async executeTool(block2, workspaceRoot, onProgress) {
+    const input = block2.input;
+    switch (block2.name) {
+      case "execute_command":
+        return this.handleExecuteCommand(block2.id, input, workspaceRoot, onProgress);
+      case "create_file":
+        return this.handleCreateFile(block2.id, input, workspaceRoot, onProgress);
+      case "open_in_editor":
+        return this.handleOpenInEditor(block2.id, input, workspaceRoot, onProgress);
+      default:
+        return {
+          toolUseId: block2.id,
+          success: false,
+          output: "",
+          error: `Unknown tool: ${block2.name}`
+        };
+    }
+  }
+  // ─── Tool Handlers ──────────────────────────────────────────────────────────
+  async handleExecuteCommand(toolUseId, input, workspaceRoot, onProgress) {
+    const { command, cwd: relativeCwd, description } = input;
+    const resolvedCwd = relativeCwd ? path3.resolve(workspaceRoot, relativeCwd) : workspaceRoot;
+    onProgress(`Requesting approval: ${description ?? command}`, false);
+    const approved = await this.requestApproval(
+      `Run command: \`${command}\``,
+      `Directory: ${resolvedCwd}
+
+${description ?? ""}`
+    );
+    if (!approved) {
+      return { toolUseId, success: false, output: "", error: "User rejected command." };
+    }
+    onProgress(`Running: ${command}`, false);
+    try {
+      const { output, exitCode } = await this.executor.execute(command, resolvedCwd);
+      if (exitCode !== 0) {
+        return { toolUseId, success: false, output, error: `Exit code ${exitCode}` };
+      }
+      return { toolUseId, success: true, output };
+    } catch (err) {
+      return {
+        toolUseId,
+        success: false,
+        output: "",
+        error: err instanceof Error ? err.message : String(err)
+      };
+    }
+  }
+  async handleCreateFile(toolUseId, input, workspaceRoot, onProgress) {
+    const { path: relativePath, content, description } = input;
+    const absolutePath = path3.resolve(workspaceRoot, relativePath);
+    onProgress(`Requesting approval: create ${relativePath}`, false);
+    const approved = await this.requestApproval(
+      `Create file: \`${relativePath}\``,
+      description ?? ""
+    );
+    if (!approved) {
+      return { toolUseId, success: false, output: "", error: "User rejected file creation." };
+    }
+    try {
+      const uri = vscode5.Uri.file(absolutePath);
+      await vscode5.workspace.fs.writeFile(uri, Buffer.from(content, "utf-8"));
+      onProgress(`Created: ${relativePath}`, false);
+      return { toolUseId, success: true, output: `File created: ${relativePath}` };
+    } catch (err) {
+      return {
+        toolUseId,
+        success: false,
+        output: "",
+        error: err instanceof Error ? err.message : String(err)
+      };
+    }
+  }
+  async handleOpenInEditor(toolUseId, input, workspaceRoot, onProgress) {
+    const { path: relativePath } = input;
+    const absolutePath = path3.resolve(workspaceRoot, relativePath);
+    try {
+      const doc = await vscode5.workspace.openTextDocument(vscode5.Uri.file(absolutePath));
+      await vscode5.window.showTextDocument(doc, vscode5.ViewColumn.One);
+      onProgress(`Opened: ${relativePath}`, false);
+      return { toolUseId, success: true, output: `Opened ${relativePath} in editor.` };
+    } catch (err) {
+      return {
+        toolUseId,
+        success: false,
+        output: "",
+        error: err instanceof Error ? err.message : String(err)
+      };
+    }
+  }
+  // ─── Helpers ────────────────────────────────────────────────────────────────
+  async requestApproval(title, detail) {
+    const answer = await vscode5.window.showInformationMessage(
+      `NeuroCode Scaffold: ${title}`,
+      { modal: true, detail },
+      "Allow",
+      "Deny"
+    );
+    return answer === "Allow";
+  }
+  dispose() {
+    this.executor.dispose();
+  }
+};
+function buildScaffoldPrompt(request) {
+  const { assignment, workspaceRoot } = request;
+  const { metadata, sections, starterCode } = assignment;
+  const sectionSummary = sections.map((s2) => `- [${s2.type}] ${s2.title}`).join("\n");
+  const lines = [
+    `Create a starter project for the following assignment in: ${workspaceRoot}`,
+    "",
+    `Title: ${metadata.title}`,
+    `Language: ${metadata.language}`,
+    `Tags: ${(metadata.tags ?? []).join(", ") || "none"}`,
+    `Difficulty: ${metadata.difficulty}`,
+    "",
+    `Description: ${metadata.description}`,
+    "",
+    "Assignment sections:",
+    sectionSummary
+  ];
+  if (starterCode) {
+    lines.push("", "Starter code (use as the initial content of the main source file):");
+    lines.push("```");
+    lines.push(starterCode);
+    lines.push("```");
+  }
+  lines.push(
+    "",
+    "Scaffold the project now. Use tools step by step.",
+    "End by calling open_in_editor on the main file the student should edit."
+  );
+  return lines.join("\n");
+}
+
 // src/core/controller/NeurocodeController.ts
 function createInitialState() {
   return {
@@ -37908,6 +38319,7 @@ var NeurocodeController = class {
   struggleDetector;
   sessionContext;
   renderer;
+  scaffoldEngine;
   webview;
   // ─── State (inspired by Cline's TaskState pattern) ──────────────
   adaptationState = createInitialState();
@@ -37927,16 +38339,18 @@ var NeurocodeController = class {
     this.struggleDetector = new StruggleDetector(this.activityTracker);
     this.sessionContext = new SessionContextManager(this.activityTracker, this.struggleDetector);
     this.renderer = new AdaptiveRenderer();
+    this.scaffoldEngine = new ScaffoldEngine();
     this.webview = webview;
     this.setupMcpCallbacks();
     this.setupPreferenceCallbacks();
     this.setupWebviewMessageRouter();
     this.setupStruggleMonitoring();
-    const config2 = vscode4.workspace.getConfiguration("neurocode");
+    const config2 = vscode6.workspace.getConfiguration("neurocode");
     const apiKey = config2.get("anthropicApiKey", "");
     if (apiKey) {
       this.adaptationEngine.setApiKey(apiKey);
       this.assignmentManager.setApiKey(apiKey);
+      this.scaffoldEngine.setApiKey(apiKey);
     }
     this.adaptationEngine.setMcpManager(this.mcpManager);
     Logger.log("NeurocodeController initialized");
@@ -38053,6 +38467,9 @@ var NeurocodeController = class {
       case "disconnect_mcp":
         await this.mcpManager.disconnect();
         break;
+      case "request_scaffold":
+        await this.requestScaffold();
+        break;
     }
   }
   // ─── Core Workflows ─────────────────────────────────────────────
@@ -38066,9 +38483,9 @@ var NeurocodeController = class {
   async loadAssignment(filePath) {
     try {
       this.clearSession();
-      const assignment = await vscode4.window.withProgress(
+      const assignment = await vscode6.window.withProgress(
         {
-          location: vscode4.ProgressLocation.Notification,
+          location: vscode6.ProgressLocation.Notification,
           title: `NeuroCode: Loading ${filePath.split(/[/\\]/).pop()}...`,
           cancellable: false
         },
@@ -38078,13 +38495,13 @@ var NeurocodeController = class {
       this.webview.postMessage({ type: "assignment_loaded", assignment });
       await this.renderAdaptiveView(assignment);
       this.postStateToWebview();
-      vscode4.window.showInformationMessage(
+      vscode6.window.showInformationMessage(
         `NeuroCode: Loaded "${assignment.metadata.title}" (${assignment.sections.length} sections)`
       );
     } catch (error2) {
       const msg = error2 instanceof Error ? error2.message : String(error2);
       Logger.error("Failed to load assignment:", error2);
-      vscode4.window.showErrorMessage(`NeuroCode: Failed to load \u2014 ${msg}`);
+      vscode6.window.showErrorMessage(`NeuroCode: Failed to load \u2014 ${msg}`);
       this.webview.sendError("load_failed", msg);
     }
   }
@@ -38095,9 +38512,9 @@ var NeurocodeController = class {
   async promptAndLoadAssignment() {
     let assignment;
     try {
-      assignment = await vscode4.window.withProgress(
+      assignment = await vscode6.window.withProgress(
         {
-          location: vscode4.ProgressLocation.Notification,
+          location: vscode6.ProgressLocation.Notification,
           title: "NeuroCode: Loading assignment...",
           cancellable: false
         },
@@ -38113,7 +38530,7 @@ var NeurocodeController = class {
     } catch (error2) {
       const msg = error2 instanceof Error ? error2.message : String(error2);
       Logger.error("Failed to load assignment:", error2);
-      vscode4.window.showErrorMessage(`NeuroCode: Failed to load assignment \u2014 ${msg}`);
+      vscode6.window.showErrorMessage(`NeuroCode: Failed to load assignment \u2014 ${msg}`);
       this.webview.sendError("load_failed", msg);
       return;
     }
@@ -38125,7 +38542,7 @@ var NeurocodeController = class {
     this.webview.postMessage({ type: "assignment_loaded", assignment });
     await this.renderAdaptiveView(assignment);
     this.postStateToWebview();
-    vscode4.window.showInformationMessage(
+    vscode6.window.showInformationMessage(
       `NeuroCode: Loaded "${assignment.metadata.title}" (${assignment.sections.length} sections)`
     );
   }
@@ -38245,17 +38662,68 @@ var NeurocodeController = class {
   async exportProgress() {
     try {
       const report = await this.assignmentManager.exportProgress();
-      const uri = await vscode4.window.showSaveDialog({
-        defaultUri: vscode4.Uri.file("progress-report.json"),
+      const uri = await vscode6.window.showSaveDialog({
+        defaultUri: vscode6.Uri.file("progress-report.json"),
         filters: { "JSON Files": ["json"] }
       });
       if (uri) {
-        await vscode4.workspace.fs.writeFile(uri, Buffer.from(report, "utf-8"));
+        await vscode6.workspace.fs.writeFile(uri, Buffer.from(report, "utf-8"));
         this.webview.sendInfo("Progress exported successfully");
       }
     } catch (error2) {
       this.webview.sendError("export_failed", `Export failed: ${error2}`);
     }
+  }
+  /**
+   * Scaffold a starter project for the current assignment.
+   * Resolves the workspace root, then runs the ScaffoldEngine agentic loop.
+   */
+  async requestScaffold() {
+    const assignment = this.assignmentManager.getCurrentAssignment();
+    if (!assignment) {
+      vscode6.window.showErrorMessage("NeuroCode: Load an assignment before scaffolding.");
+      return;
+    }
+    if (!this.scaffoldEngine.isAvailable) {
+      vscode6.window.showErrorMessage(
+        "NeuroCode: Set neurocode.anthropicApiKey in settings to use scaffolding."
+      );
+      return;
+    }
+    const workspaceFolders = vscode6.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      vscode6.window.showErrorMessage("NeuroCode: Open a workspace folder before scaffolding.");
+      return;
+    }
+    const workspaceRoot = workspaceFolders[0].uri.fsPath;
+    await vscode6.window.withProgress(
+      {
+        location: vscode6.ProgressLocation.Notification,
+        title: `NeuroCode: Scaffolding "${assignment.metadata.title}"...`,
+        cancellable: false
+      },
+      async (progress) => {
+        try {
+          await this.scaffoldEngine.run(
+            { assignment, workspaceRoot },
+            (message, isDone) => {
+              progress.report({ message });
+              this.webview.postMessage({
+                type: "scaffold_progress",
+                progress: { message, isDone }
+              });
+            }
+          );
+          vscode6.window.showInformationMessage(
+            `NeuroCode: Project scaffold complete for "${assignment.metadata.title}"`
+          );
+        } catch (error2) {
+          const msg = error2 instanceof Error ? error2.message : String(error2);
+          Logger.error("Scaffold failed:", error2);
+          vscode6.window.showErrorMessage(`NeuroCode: Scaffold failed \u2014 ${msg}`);
+        }
+      }
+    );
   }
   /**
    * Post full extension state to webview.
@@ -38303,7 +38771,7 @@ var NeurocodeController = class {
   toggleAdaptiveMode() {
     const current = this.preferenceManager.getPreferences().adaptiveMode;
     this.preferenceManager.updatePreferences({ adaptiveMode: !current });
-    vscode4.window.showInformationMessage(
+    vscode6.window.showInformationMessage(
       `NeuroCode: Adaptive mode ${!current ? "enabled" : "disabled"}`
     );
   }
@@ -38311,10 +38779,10 @@ var NeurocodeController = class {
    * Show the preferences configuration panel.
    */
   showPreferencesPanel() {
-    const panel = vscode4.window.createWebviewPanel(
+    const panel = vscode6.window.createWebviewPanel(
       "neurocodePreferences",
       "NeuroCode Preferences",
-      vscode4.ViewColumn.One,
+      vscode6.ViewColumn.One,
       { enableScripts: true }
     );
     panel.webview.html = this.wrapPreferencesHtml(
@@ -38360,6 +38828,7 @@ var NeurocodeController = class {
     this.struggleDetector.dispose();
     this.mcpManager.dispose();
     this.adaptationEngine.dispose();
+    this.scaffoldEngine.dispose();
     this.preferenceManager.dispose();
     this.assignmentManager.dispose();
     this.webview.dispose();
@@ -38371,13 +38840,13 @@ var NeurocodeController = class {
 var controller;
 async function activate(context) {
   const startTime = performance.now();
-  const outputChannel2 = vscode5.window.createOutputChannel("NeuroCode Adapter");
+  const outputChannel2 = vscode7.window.createOutputChannel("NeuroCode Adapter");
   Logger.initialize(outputChannel2);
   context.subscriptions.push(outputChannel2);
   Logger.log("NeuroCode Adapter activating...");
   const webviewManager = new WebviewManager(context.extensionUri);
   context.subscriptions.push(
-    vscode5.window.registerWebviewViewProvider(
+    vscode7.window.registerWebviewViewProvider(
       WebviewManager.VIEW_ID,
       webviewManager,
       { webviewOptions: { retainContextWhenHidden: true } }
@@ -38387,12 +38856,13 @@ async function activate(context) {
   context.subscriptions.push(controller);
   registerCommands(context, controller);
   context.subscriptions.push(
-    vscode5.workspace.onDidChangeConfiguration((e2) => {
+    vscode7.workspace.onDidChangeConfiguration((e2) => {
       if (e2.affectsConfiguration("neurocode.anthropicApiKey")) {
-        const config2 = vscode5.workspace.getConfiguration("neurocode");
+        const config2 = vscode7.workspace.getConfiguration("neurocode");
         const apiKey = config2.get("anthropicApiKey", "");
         controller?.adaptationEngine.setApiKey(apiKey);
         controller?.assignmentManager.setApiKey(apiKey);
+        controller?.scaffoldEngine.setApiKey(apiKey);
       }
     })
   );
@@ -38406,20 +38876,21 @@ function registerCommands(context, ctrl) {
     ["neurocode.configurePreferences", () => ctrl.showPreferencesPanel()],
     ["neurocode.toggleAdaptiveMode", () => ctrl.toggleAdaptiveMode()],
     ["neurocode.getAIHelp", () => ctrl.requestAdaptation("help_request")],
+    ["neurocode.scaffoldProject", () => ctrl.requestScaffold()],
     ["neurocode.showDashboard", () => ctrl.showDashboard()],
     ["neurocode.exportProgress", async () => {
       try {
         const report = await ctrl.assignmentManager.exportProgress();
-        const uri = await vscode5.window.showSaveDialog({
-          defaultUri: vscode5.Uri.file("neurocode-progress.json"),
+        const uri = await vscode7.window.showSaveDialog({
+          defaultUri: vscode7.Uri.file("neurocode-progress.json"),
           filters: { "JSON Files": ["json"] }
         });
         if (uri) {
-          await vscode5.workspace.fs.writeFile(uri, Buffer.from(report, "utf-8"));
-          vscode5.window.showInformationMessage("Progress exported successfully");
+          await vscode7.workspace.fs.writeFile(uri, Buffer.from(report, "utf-8"));
+          vscode7.window.showInformationMessage("Progress exported successfully");
         }
       } catch (error2) {
-        vscode5.window.showErrorMessage(
+        vscode7.window.showErrorMessage(
           `Export failed: ${error2 instanceof Error ? error2.message : String(error2)}`
         );
       }
@@ -38427,7 +38898,7 @@ function registerCommands(context, ctrl) {
   ];
   for (const [id, handler] of commands3) {
     context.subscriptions.push(
-      vscode5.commands.registerCommand(id, handler)
+      vscode7.commands.registerCommand(id, handler)
     );
   }
   Logger.log(`Registered ${commands3.length} commands`);

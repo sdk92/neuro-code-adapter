@@ -38,6 +38,7 @@ import { AdaptationEngine } from "@services/llm/AdaptationEngine";
 import { PreferenceManager } from "@features/preferences/PreferenceManager";
 import { AssignmentManager } from "@features/assignments/AssignmentManager";
 import { AdaptiveRenderer } from "@features/adaptive/AdaptiveRenderer";
+import { ScaffoldEngine } from "@features/scaffold/ScaffoldEngine";
 import type { WebviewMessage } from "@shared/messages";
 import type { AdaptationRequest, AdaptationResponse, Assignment } from "@shared/types";
 import { Logger } from "@shared/logger";
@@ -73,6 +74,7 @@ export class NeurocodeController implements vscode.Disposable {
   readonly struggleDetector: StruggleDetector;
   readonly sessionContext: SessionContextManager;
   readonly renderer: AdaptiveRenderer;
+  readonly scaffoldEngine: ScaffoldEngine;
   readonly webview: WebviewManager;
 
   // ─── State (inspired by Cline's TaskState pattern) ──────────────
@@ -100,6 +102,7 @@ export class NeurocodeController implements vscode.Disposable {
     this.struggleDetector = new StruggleDetector(this.activityTracker);
     this.sessionContext = new SessionContextManager(this.activityTracker, this.struggleDetector);
     this.renderer = new AdaptiveRenderer();
+    this.scaffoldEngine = new ScaffoldEngine();
     this.webview = webview;
 
     // Wire up connections
@@ -114,6 +117,7 @@ export class NeurocodeController implements vscode.Disposable {
     if (apiKey) {
       this.adaptationEngine.setApiKey(apiKey);
       this.assignmentManager.setApiKey(apiKey); // Also used for PDF structuring
+      this.scaffoldEngine.setApiKey(apiKey);
     }
 
     // Connect MCP manager to adaptation engine
@@ -218,10 +222,6 @@ export class NeurocodeController implements vscode.Disposable {
         }
         break;
 
-      case "import_assignment":
-        await this.importAssignment(message.content);
-        break;
-
       case "request_adaptation":
         await this.requestAdaptation("section_adaptation", message.sectionId);
         break;
@@ -257,6 +257,10 @@ export class NeurocodeController implements vscode.Disposable {
 
       case "disconnect_mcp":
         await this.mcpManager.disconnect();
+        break;
+
+      case "request_scaffold":
+        await this.requestScaffold();
         break;
     }
   }
@@ -345,20 +349,6 @@ export class NeurocodeController implements vscode.Disposable {
     vscode.window.showInformationMessage(
       `NeuroCode: Loaded "${assignment.metadata.title}" (${assignment.sections.length} sections)`
     );
-  }
-
-  /**
-   * Import assignment from raw JSON.
-   */
-  async importAssignment(content: string): Promise<void> {
-    try {
-      const assignment = this.assignmentManager.importFromString(content);
-      this.sessionContext.startSession(assignment.metadata.id);
-      this.webview.postMessage({ type: "assignment_loaded", assignment });
-      await this.renderAdaptiveView(assignment);
-    } catch (error) {
-      this.webview.sendError("import_failed", `Failed to import: ${error}`);
-    }
   }
 
   /**
@@ -502,6 +492,62 @@ export class NeurocodeController implements vscode.Disposable {
     } catch (error) {
       this.webview.sendError("export_failed", `Export failed: ${error}`);
     }
+  }
+
+  /**
+   * Scaffold a starter project for the current assignment.
+   * Resolves the workspace root, then runs the ScaffoldEngine agentic loop.
+   */
+  async requestScaffold(): Promise<void> {
+    const assignment = this.assignmentManager.getCurrentAssignment();
+    if (!assignment) {
+      vscode.window.showErrorMessage("NeuroCode: Load an assignment before scaffolding.");
+      return;
+    }
+
+    if (!this.scaffoldEngine.isAvailable) {
+      vscode.window.showErrorMessage(
+        "NeuroCode: Set neurocode.anthropicApiKey in settings to use scaffolding."
+      );
+      return;
+    }
+
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      vscode.window.showErrorMessage("NeuroCode: Open a workspace folder before scaffolding.");
+      return;
+    }
+
+    const workspaceRoot = workspaceFolders[0].uri.fsPath;
+
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: `NeuroCode: Scaffolding "${assignment.metadata.title}"...`,
+        cancellable: false,
+      },
+      async (progress) => {
+        try {
+          await this.scaffoldEngine.run(
+            { assignment, workspaceRoot },
+            (message, isDone) => {
+              progress.report({ message });
+              this.webview.postMessage({
+                type: "scaffold_progress",
+                progress: { message, isDone },
+              });
+            }
+          );
+          vscode.window.showInformationMessage(
+            `NeuroCode: Project scaffold complete for "${assignment.metadata.title}"`
+          );
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          Logger.error("Scaffold failed:", error);
+          vscode.window.showErrorMessage(`NeuroCode: Scaffold failed — ${msg}`);
+        }
+      }
+    );
   }
 
   /**

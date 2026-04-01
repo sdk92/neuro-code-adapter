@@ -1,22 +1,14 @@
 /**
- * AssignmentParser — Multi-format assignment parser.
+ * AssignmentParser — PDF-only assignment parser.
  *
- * Handles the reality that assignments come as PDFs, not JSON.
- * Supports three input formats with a three-tier parsing strategy:
+ * Supports two tiers:
  *
  *   Tier 1 (best): PDF → send directly to Claude as base64 document
  *     Claude "sees" the original PDF layout — formulas, tables, diagrams preserved.
  *     Requires API key. Solves garbled symbols/formulas from text extraction.
  *
- *   Tier 2 (good): PDF → pdf-parse text extraction → Claude structuring
- *     Fallback if Tier 1 fails. May lose formula formatting.
- *     Requires API key.
- *
- *   Tier 3 (basic): PDF → pdf-parse text extraction → heuristic parsing
- *     Offline fallback. No API key needed. Basic structure detection only.
- *
- * For JSON input: direct parse, no LLM needed.
- * For Markdown input: Tier 2 or Tier 3.
+ *   Tier 2 (offline fallback): PDF → pdf-parse text extraction → heuristic parsing
+ *     No API key needed. Basic structure detection only.
  */
 import * as path from "path";
 import * as fs from "fs";
@@ -29,26 +21,21 @@ import { Logger } from "@shared/logger";
 /** Max file size for PDF parsing (borrowed from Cline's 20MB limit) */
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 
-/** Simple cache to avoid re-parsing the same file (borrowed from Cline's dedup in ReadFileToolHandler) */
+/** Simple cache to avoid re-parsing the same file */
 const extractionCache = new Map<string, { text: string; timestamp: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-// ─── PDF Text Extraction ─────────────────────────────────────────────────────
+// ─── PDF Text Extraction (Tier 2 offline fallback) ──────────────────────────
 
 /**
  * Extract text from a PDF buffer using pdf-parse.
+ * Used only when no API key is available (Tier 2 fallback).
  *
- * Key Cline borrowings:
- *   1. Import from "pdf-parse/lib/pdf-parse" (NOT the main entry).
- *      Cline's extract-text.ts uses this sub-path because the main entry
- *      of pdf-parse tries to load a test PDF during require(), which fails
- *      in bundled environments (esbuild/webpack). The /lib/pdf-parse path
- *      gives us the core parser directly.
- *   2. 20MB file size limit (Cline's process-files.ts).
- *   3. Dedup cache pattern (Cline's ReadFileToolHandler avoids re-reading).
+ * Import from "pdf-parse/lib/pdf-parse" (NOT the main entry).
+ * The main entry tries to load a test PDF during require(), which fails
+ * in bundled environments (esbuild/webpack).
  */
 async function extractPdfText(buffer: Buffer, cacheKey?: string): Promise<string> {
-  // Check file size limit (Cline pattern: 20MB cap)
   if (buffer.length > MAX_FILE_SIZE_BYTES) {
     throw new Error(
       `PDF file too large (${Math.round(buffer.length / 1024 / 1024)}MB). ` +
@@ -56,7 +43,6 @@ async function extractPdfText(buffer: Buffer, cacheKey?: string): Promise<string
     );
   }
 
-  // Check cache (Cline's dedup pattern)
   if (cacheKey) {
     const cached = extractionCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
@@ -66,15 +52,10 @@ async function extractPdfText(buffer: Buffer, cacheKey?: string): Promise<string
   }
 
   try {
-    // IMPORTANT: Import from sub-path, not main entry.
-    // Cline's extract-text.ts: import pdf from "pdf-parse/lib/pdf-parse"
-    // The main "pdf-parse" entry tries to load a test PDF during require(),
-    // which breaks in esbuild-bundled VS Code extensions.
     const pdf = require("pdf-parse/lib/pdf-parse");
     const data = await pdf(buffer);
     const text: string = data.text;
 
-    // Cache the result
     if (cacheKey) {
       extractionCache.set(cacheKey, { text, timestamp: Date.now() });
     }
@@ -89,62 +70,24 @@ async function extractPdfText(buffer: Buffer, cacheKey?: string): Promise<string
   }
 }
 
-/**
- * Clear the extraction cache. Called when memory pressure is detected
- * or when the extension is deactivated.
- */
 export function clearExtractionCache(): void {
   extractionCache.clear();
 }
 
-// ─── LLM-Based Structuring ──────────────────────────────────────────────────
-
-const STRUCTURING_PROMPT = `You are a document parser for an educational platform.
-Given the raw text of a programming assignment, extract and structure it into JSON.
-
-You MUST respond with ONLY valid JSON matching this schema (no markdown, no explanation):
-{
-  "metadata": {
-    "id": "string (generate from title, e.g. 'csharp-calculator-101')",
-    "title": "string",
-    "description": "string (1-2 sentence summary)",
-    "author": "string (or 'Unknown')",
-    "createdAt": "ISO date string",
-    "updatedAt": "ISO date string",
-    "difficulty": "beginner | intermediate | advanced",
-    "estimatedMinutes": number,
-    "language": "string (programming language, e.g. 'C#', 'Python')",
-    "tags": ["string"]
-  },
-  "sections": [
-    {
-      "id": "string (e.g. 'section_0')",
-      "title": "string",
-      "content": "string (Markdown formatted)",
-      "type": "instruction | task | hint | example | reference",
-      "order": number
-    }
-  ],
-  "starterCode": "string or null (if starter code is provided in the document)",
-  "testCases": [] (extract if mentioned, otherwise empty array)
-}
-
-Rules:
-- Detect section boundaries from headings, numbered items, or topic changes
-- Classify each section: "instruction" for explanations, "task" for things the student must do,
-  "hint" for tips, "example" for code examples, "reference" for API/syntax references
-- Preserve code blocks in Markdown format (triple backticks)
-- Detect the programming language from context
-- If difficulty is not stated, infer from content complexity
-- Estimate completion time based on number and complexity of tasks`;
+// ─── PDF Direct Vision — Tier 1 ─────────────────────────────────────────────
 
 /**
- * System prompt specifically for Tier 1 (direct PDF input).
+ * Prompt for Tier 1 (direct PDF input).
  *
- * Key differences from STRUCTURING_PROMPT:
- *   - References "the attached PDF" instead of "raw text"
- *   - Adds explicit instructions for preserving visual elements
- *   - Reinforces JSON-only output constraint
+ * Task sections MUST use a standardised three-part layout so every assignment
+ * the student sees has a predictable, homogeneous structure:
+ *
+ *   ### Background
+ *   ### What to do
+ *   ### Acceptance criteria
+ *
+ * This lets the adaptive renderer and the student reliably locate each part
+ * regardless of how the original PDF was formatted.
  */
 const PDF_STRUCTURING_PROMPT = `You are a document parser for an educational platform.
 You will receive a PDF file of a programming assignment. Analyze the ENTIRE document and extract its structure into JSON.
@@ -170,100 +113,44 @@ The JSON must match this schema exactly:
     {
       "id": "string (e.g. 'section_0')",
       "title": "string",
-      "content": "string (Markdown formatted)",
+      "content": "string (Markdown formatted — see layout rules below)",
       "type": "instruction | task | hint | example | reference",
       "order": number
     }
   ],
   "starterCode": "string or null (if starter code is provided in the document)",
-  "testCases": [] (extract if mentioned, otherwise empty array)
+  "testCases": []
 }
 
-Rules:
-- Detect section boundaries from headings, numbered items, or topic changes
-- Classify each section: "instruction" for explanations, "task" for things the student must do,
-  "hint" for tips, "example" for code examples, "reference" for API/syntax references
-- Preserve mathematical formulas in LaTeX notation (e.g. $x^2$, $$\\sum_{i=1}^{n}$$)
-- Preserve code blocks in Markdown format (triple backticks with language identifier)
-- Convert tables to Markdown table syntax
-- Describe diagrams/figures as [Figure: description]
-- Detect the programming language from context
-- If difficulty is not stated, infer from content complexity
-- Estimate completion time based on number and complexity of tasks
+Layout rules:
+- For sections of type "task", the content field MUST use exactly this three-part Markdown structure:
+
+  ### Background
+  [Why this task exists and what concept it reinforces — 1-3 sentences]
+
+  ### What to do
+  [Numbered list of concrete, actionable steps]
+
+  ### Acceptance criteria
+  [Bullet list describing how the student knows the task is complete]
+
+- For all other section types (instruction, hint, example, reference), write content as free Markdown.
+- Detect section boundaries from headings, numbered items, or topic changes.
+- Preserve mathematical formulas in LaTeX notation (e.g. $x^2$, $$\\sum_{i=1}^{n}$$).
+- Preserve code blocks in Markdown format (triple backticks with language identifier).
+- Convert tables to Markdown table syntax.
+- Describe diagrams/figures as [Figure: description].
+- Detect the programming language from context.
+- If difficulty is not stated, infer from content complexity.
+- Estimate completion time based on number and complexity of tasks.
 
 Remember: Output ONLY the JSON object. No other text.`;
 
 /**
- * Use Claude to structure raw text into an Assignment.
+ * Send PDF directly to Claude as a base64 document (Tier 1).
  *
- * Borrows Cline's pattern from process-files.ts:
- *   Content is wrapped in <file_content path="..."> XML tags
- *   to give the LLM clear boundaries and source context.
- */
-async function structureViaLlm(
-  rawText: string,
-  apiKey: string,
-  fileName: string
-): Promise<Assignment> {
-  const client = new Anthropic({ apiKey });
-
-  // Cline wraps extracted content in XML tags (process-files.ts):
-  //   <file_content path="assignment.pdf">...text...</file_content>
-  // This gives the LLM clear document boundaries.
-  const wrappedContent = `<file_content path="${fileName}">\n${rawText}\n</file_content>`;
-
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 8192,
-    system: STRUCTURING_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: `Parse this assignment document into structured JSON:\n\n${wrappedContent}`,
-      },
-      // Prefill to force JSON output (same technique as Tier 1)
-      {
-        role: "assistant",
-        content: "{",
-      },
-    ],
-  });
-
-  const textBlock = response.content.find((b) => b.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("No text in LLM response");
-  }
-
-  // Extract JSON (may be wrapped in code blocks)
-  // Prepend "{" since we prefilled the assistant response with it
-  let jsonStr = "{" + textBlock.text.trim();
-  const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (jsonMatch) {
-    jsonStr = jsonMatch[1].trim();
-  }
-
-  const parsed = JSON.parse(jsonStr);
-  return validateAndNormalise(parsed, fileName);
-}
-
-// ─── PDF Direct Vision (bypass text extraction) ─────────────────────────────
-
-/**
- * Send PDF directly to Claude as a base64 document.
- *
- * This BYPASSES pdf-parse entirely, solving:
- *   - Mathematical formulas rendered as garbled text
- *   - Special Unicode symbols lost in extraction
- *   - Table layouts collapsed into flat text
- *   - Diagrams and images completely lost
- *
- * The Anthropic API natively supports PDF as a document input type.
- * Claude "sees" the PDF exactly as a student would — layout, formulas,
- * tables, code blocks, everything preserved.
- *
- * This approach also aligns with the TODO to potentially eliminate the
- * intermediate Assignment JSON step: Claude reads the original PDF
- * and structures it in one pass.
+ * Bypasses pdf-parse entirely — Claude sees the PDF exactly as a student would:
+ * layout, formulas, tables, code blocks, everything preserved.
  */
 async function structureViaDirectPdf(
   pdfBuffer: Buffer,
@@ -271,11 +158,9 @@ async function structureViaDirectPdf(
   fileName: string
 ): Promise<Assignment> {
   const client = new Anthropic({ apiKey });
-
   const base64Data = pdfBuffer.toString("base64");
 
-  Logger.log(`Sending PDF directly to Claude: ${fileName} (${Math.round(pdfBuffer.length / 1024)}KB)`);
-  Logger.log(`[DEBUG-v2] Using PDF_STRUCTURING_PROMPT + prefill, max_tokens=8192`);
+  Logger.log(`Tier 1: Sending PDF directly to Claude: ${fileName} (${Math.round(pdfBuffer.length / 1024)}KB)`);
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-20250514",
@@ -284,8 +169,6 @@ async function structureViaDirectPdf(
     messages: [
       {
         role: "user",
-        // The document type is supported by the Anthropic API for PDF input.
-        // Type assertion needed because SDK type definitions may lag behind API capabilities.
         content: [
           {
             type: "document",
@@ -301,10 +184,7 @@ async function structureViaDirectPdf(
           },
         ],
       },
-      // ── Prefill: force Claude to start outputting JSON immediately ──
-      // By providing the opening brace as an assistant message, Claude
-      // MUST continue with valid JSON rather than prose or code.
-      // See: https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/prefill-claudes-response
+      // Prefill to force JSON output immediately
       {
         role: "assistant",
         content: "{",
@@ -317,20 +197,18 @@ async function structureViaDirectPdf(
     throw new Error("No text in Claude response");
   }
 
-  // ── DEBUG: dump raw response to file for inspection ──
+  // ── DEBUG: dump raw response for inspection ──
   const debugDir = path.join(path.dirname(fileName), "..", "debug");
   try {
     if (!fs.existsSync(debugDir)) {
       fs.mkdirSync(debugDir, { recursive: true });
     }
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    // Full API response (all content blocks, stop_reason, usage, etc.)
     fs.writeFileSync(
       path.join(debugDir, `tier1_full_response_${timestamp}.json`),
       JSON.stringify(response, null, 2),
       "utf-8"
     );
-    // Just the raw text block that we'll try to parse as JSON
     fs.writeFileSync(
       path.join(debugDir, `tier1_raw_text_${timestamp}.txt`),
       textBlock.text,
@@ -344,8 +222,6 @@ async function structureViaDirectPdf(
 
   // Claude's response continues from the prefilled "{", so prepend it back
   let jsonStr = "{" + textBlock.text.trim();
-
-  // Strip markdown code fences if Claude still wraps the output
   const jsonMatch = jsonStr.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/);
   if (jsonMatch) {
     jsonStr = jsonMatch[1].trim();
@@ -355,16 +231,11 @@ async function structureViaDirectPdf(
   return validateAndNormalise(parsed, fileName);
 }
 
+// ─── Heuristic Parsing — Tier 2 offline fallback ────────────────────────────
+
 /**
  * Parse raw text into sections using heuristic rules.
- * Used when no LLM is available.
- *
- * Detection strategy:
- *   1. Lines matching /^#{1,3}\s/ → Markdown headings → section boundaries
- *   2. Lines matching /^\d+[\.\)]\s/ → Numbered sections
- *   3. Lines matching /^(Task|Exercise|Step|Part)\s/i → Task sections
- *   4. Code blocks (triple backticks) → kept within their parent section
- *   5. Everything else → content paragraphs
+ * Used only when no API key is available.
  */
 function structureViaHeuristics(rawText: string, fileName: string): Assignment {
   const lines = rawText.split("\n");
@@ -375,7 +246,6 @@ function structureViaHeuristics(rawText: string, fileName: string): Assignment {
   let currentType: AssignmentSection["type"] = "instruction";
   let sectionIndex = 0;
 
-  // Detect programming language from content
   const languageHints: Record<string, RegExp> = {
     "C#": /\b(namespace|using\s+System|Console\.Write|\.cs\b|csharp)/i,
     "Python": /\b(def\s+\w+|import\s+\w+|print\(|\.py\b|python)/i,
@@ -406,7 +276,6 @@ function structureViaHeuristics(rawText: string, fileName: string): Assignment {
   }
 
   for (const line of lines) {
-    // Detect Markdown headings
     const headingMatch = line.match(/^(#{1,3})\s+(.+)/);
     if (headingMatch) {
       flushSection();
@@ -415,17 +284,14 @@ function structureViaHeuristics(rawText: string, fileName: string): Assignment {
       continue;
     }
 
-    // Detect numbered sections (e.g., "1. Setup", "2) Implementation")
     const numberedMatch = line.match(/^(\d+)[.\)]\s+(.+)/);
     if (numberedMatch && numberedMatch[2].length > 3 && !line.startsWith("   ")) {
-      // Only treat as section header if it's not indented (not a list item)
       flushSection();
       currentTitle = numberedMatch[2];
       currentType = classifySectionTitle(currentTitle);
       continue;
     }
 
-    // Detect labelled sections (e.g., "Task:", "Exercise 1:", "Step 3:")
     const labelledMatch = line.match(/^(Task|Exercise|Step|Part|Section|Hint|Example|Note|Reference)\s*\d*\s*[:—\-]\s*(.*)/i);
     if (labelledMatch) {
       flushSection();
@@ -437,13 +303,10 @@ function structureViaHeuristics(rawText: string, fileName: string): Assignment {
     currentContent.push(line);
   }
 
-  // Flush remaining content
   flushSection();
 
-  // Filter out empty sections
   const nonEmpty = sections.filter((s) => s.content.length > 0);
 
-  // Build metadata
   const title = nonEmpty.length > 0
     ? nonEmpty[0].title
     : path.basename(fileName, path.extname(fileName));
@@ -461,7 +324,6 @@ function structureViaHeuristics(rawText: string, fileName: string): Assignment {
     tags: [],
   };
 
-  // Extract starter code if found
   let starterCode: string | undefined;
   const codeMatch = rawText.match(/```[\w]*\n([\s\S]*?)```/);
   if (codeMatch) {
@@ -481,9 +343,6 @@ function structureViaHeuristics(rawText: string, fileName: string): Assignment {
   };
 }
 
-/**
- * Classify a section title into a section type.
- */
 function classifySectionTitle(title: string): AssignmentSection["type"] {
   const lower = title.toLowerCase();
   if (/task|exercise|implement|create|build|write|code|develop/.test(lower)) { return "task"; }
@@ -493,9 +352,6 @@ function classifySectionTitle(title: string): AssignmentSection["type"] {
   return "instruction";
 }
 
-/**
- * Classify a labelled section prefix into a section type.
- */
 function classifyLabel(label: string): AssignmentSection["type"] {
   switch (label.toLowerCase()) {
     case "task":
@@ -515,9 +371,6 @@ function classifyLabel(label: string): AssignmentSection["type"] {
   }
 }
 
-/**
- * Infer difficulty from content complexity.
- */
 function inferDifficulty(text: string): AssignmentMetadata["difficulty"] {
   const complexitySignals = [
     /\b(inheritance|polymorphism|interface|abstract|generic|async|await|delegate|lambda|LINQ)\b/gi,
@@ -538,9 +391,6 @@ function inferDifficulty(text: string): AssignmentMetadata["difficulty"] {
 
 // ─── Validation ──────────────────────────────────────────────────────────────
 
-/**
- * Validate and normalise a parsed assignment object.
- */
 function validateAndNormalise(raw: any, fileName: string): Assignment {
   if (!raw || typeof raw !== "object") {
     throw new Error("Parsed result is not an object");
@@ -586,111 +436,39 @@ function validateAndNormalise(raw: any, fileName: string): Assignment {
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
-export type SupportedFormat = "json" | "pdf" | "markdown";
-
 /**
- * Detect file format from extension.
- */
-export function detectFormat(filePath: string): SupportedFormat {
-  const ext = path.extname(filePath).toLowerCase();
-  switch (ext) {
-    case ".pdf": return "pdf";
-    case ".md":
-    case ".markdown":
-    case ".txt":
-      return "markdown";
-    default: return "json";
-  }
-}
-
-/**
- * Parse an assignment file into a structured Assignment object.
+ * Parse a PDF assignment file into a structured Assignment object.
  *
- * @param fileBuffer - Raw file content as Buffer
- * @param fileName - Original file name (used for format detection and metadata)
- * @param apiKey - Optional Anthropic API key for LLM-based structuring
+ * @param fileBuffer - Raw PDF content as Buffer
+ * @param fileName - Original file name (used for metadata)
+ * @param apiKey - Optional Anthropic API key for Tier 1 (direct PDF to Claude)
  */
 export async function parseAssignmentFile(
   fileBuffer: Buffer,
   fileName: string,
   apiKey?: string
 ): Promise<Assignment> {
-  const format = detectFormat(fileName);
-
-  switch (format) {
-    case "json": {
-      // JSON — direct parse, no LLM needed
-      const text = fileBuffer.toString("utf-8");
-      const parsed = JSON.parse(text);
-      return validateAndNormalise(parsed, fileName);
-    }
-
-    case "pdf": {
-      // PDF parsing strategy (3-tier fallback):
-      //
-      //   Tier 1: Send PDF directly to Claude (API key required)
-      //           Claude "sees" the original PDF — formulas, tables, diagrams all preserved.
-      //           No text extraction needed. Solves garbled symbols/formulas problem.
-      //
-      //   Tier 2: Extract text via pdf-parse → LLM structuring (API key required)
-      //           Fallback if direct PDF fails (e.g. file too large for API).
-      //           May lose formulas and special symbols.
-      //
-      //   Tier 3: Extract text via pdf-parse → heuristic parsing (no API key needed)
-      //           Offline fallback. Basic structure detection only.
-
-      // Tier 1: Direct PDF to Claude (best quality)
-      if (apiKey) {
-        try {
-          Logger.log("Tier 1: Sending PDF directly to Claude...");
-          return await structureViaDirectPdf(fileBuffer, apiKey, fileName);
-        } catch (error) {
-          Logger.warn("Direct PDF failed, falling back to text extraction:", error);
-        }
-      }
-
-      // Tier 2 & 3: Text extraction path
-      const rawText = await extractPdfText(fileBuffer, fileName);
-
-      if (!rawText || rawText.trim().length === 0) {
-        throw new Error(
-          "PDF appears to be empty or image-only. " +
-          "Configure an Anthropic API key (neurocode.anthropicApiKey) " +
-          "for direct PDF reading with formula/symbol support."
-        );
-      }
-
-      Logger.log(`PDF text extracted: ${rawText.length} characters from ${fileName}`);
-
-      // Tier 2: Text + LLM structuring
-      /*
-      if (apiKey) {
-        try {
-          Logger.log("Tier 2: Structuring extracted text via LLM...");
-          return await structureViaLlm(rawText, apiKey, fileName);
-        } catch (error) {
-          Logger.warn("LLM structuring failed, using heuristics:", error);
-        }
-      }
-      */
-      // Tier 3: Heuristic parsing (offline)
-      Logger.log("Tier 3: Structuring via heuristics...");
-      return structureViaHeuristics(rawText, fileName);
-    }
-
-    case "markdown": {
-      // Markdown — treat as raw text and structure
-      const rawText = fileBuffer.toString("utf-8");
-
-      if (apiKey) {
-        try {
-          return await structureViaLlm(rawText, apiKey, fileName);
-        } catch (error) {
-          Logger.warn("LLM structuring failed, using heuristics:", error);
-        }
-      }
-
-      return structureViaHeuristics(rawText, fileName);
+  // Tier 1: Direct PDF to Claude (best quality, requires API key)
+  if (apiKey) {
+    try {
+      return await structureViaDirectPdf(fileBuffer, apiKey, fileName);
+    } catch (error) {
+      Logger.warn("Tier 1 (direct PDF) failed, falling back to heuristics:", error);
     }
   }
+
+  // Tier 2: Text extraction → heuristic parsing (offline fallback)
+  Logger.log("Tier 2: Extracting text and parsing via heuristics...");
+  const rawText = await extractPdfText(fileBuffer, fileName);
+
+  if (!rawText || rawText.trim().length === 0) {
+    throw new Error(
+      "PDF appears to be empty or image-only. " +
+      "Configure an Anthropic API key (neurocode.anthropicApiKey) " +
+      "for direct PDF reading with formula/symbol support."
+    );
+  }
+
+  Logger.log(`PDF text extracted: ${rawText.length} characters from ${fileName}`);
+  return structureViaHeuristics(rawText, fileName);
 }

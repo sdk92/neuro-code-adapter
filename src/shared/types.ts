@@ -33,6 +33,12 @@ export interface StructuralPreferences {
   showCheckboxes: boolean;
   bulletStyle: "bullets" | "numbers" | "icons";
   sectionCollapsible: boolean;
+  /** How task sections are broken down:
+   *  - combined: merge related tasks into broader milestones
+   *  - standard: keep original task structure from the assignment
+   *  - detailed: break each task into atomic sub-steps with clear acceptance criteria
+   */
+  taskGranularity: "combined" | "standard" | "detailed";
 }
 
 export interface CognitivePreferences {
@@ -167,6 +173,25 @@ export interface SuggestedAction {
   type: "break" | "simplify" | "example" | "hint" | "encouragement" | "restructure";
   message: string;
   priority: "low" | "medium" | "high";
+}
+
+// ─── Scaffold Types ─────────────────────────────────────────────────────────
+
+export interface ScaffoldRequest {
+  assignment: Assignment;
+  workspaceRoot: string;
+}
+
+export interface ToolExecutionResult {
+  toolUseId: string;
+  success: boolean;
+  output: string;
+  error?: string;
+}
+
+export interface ScaffoldProgress {
+  message: string;
+  isDone: boolean;
 }
 
 // ─── MCP Types ──────────────────────────────────────────────────────────────

@@ -17,6 +17,7 @@
       { "command": "neurocode.configurePreferences", "title": "NeuroCode: Configure Preferences" },
       { "command": "neurocode.toggleAdaptiveMode", "title": "NeuroCode: Toggle Adaptive Mode" },
       { "command": "neurocode.getAIHelp", "title": "NeuroCode: Get AI Help" },
+      { "command": "neurocode.scaffoldProject", "title": "NeuroCode: Scaffold Project" },
       { "command": "neurocode.showDashboard", "title": "NeuroCode: Show Dashboard" },
       { "command": "neurocode.exportProgress", "title": "NeuroCode: Export Progress" }
     ],
