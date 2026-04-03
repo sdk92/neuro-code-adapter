@@ -13,7 +13,6 @@
   "contributes": {
     "commands": [
       { "command": "neurocode.openAssignment", "title": "NeuroCode: Open Assignment" },
-      { "command": "neurocode.importAssignment", "title": "NeuroCode: Import Assignment" },
       { "command": "neurocode.configurePreferences", "title": "NeuroCode: Configure Preferences" },
       { "command": "neurocode.toggleAdaptiveMode", "title": "NeuroCode: Toggle Adaptive Mode" },
       { "command": "neurocode.getAIHelp", "title": "NeuroCode: Get AI Help" },
@@ -88,6 +87,17 @@
           "type": "boolean",
           "default": false,
           "description": "Enable text-to-speech support"
+        },
+        "neurocode.taskGranularity": {
+          "type": "string",
+          "enum": ["combined", "standard", "detailed"],
+          "enumDescriptions": [
+            "Merge related tasks into broad milestones",
+            "Keep original task structure from the assignment",
+            "Break each task into atomic sub-steps with acceptance criteria"
+          ],
+          "default": "standard",
+          "description": "How task sections are broken down in adaptive views"
         },
         "neurocode.mcpServerUrl": {
           "type": "string",

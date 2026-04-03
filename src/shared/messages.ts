@@ -53,6 +53,7 @@ export type WebviewMessage =
   | { type: "ready" }
   | { type: "request_state" }
   | { type: "open_assignment"; filePath: string }
+  | { type: "open_preferences" }
   | { type: "request_adaptation"; sectionId?: string }
   | { type: "request_help"; question: string; sectionId?: string }
   | { type: "update_preferences"; preferences: Partial<UserPreferences> }

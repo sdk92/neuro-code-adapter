@@ -103,6 +103,12 @@ export class PreferenceManager implements vscode.Disposable {
       changed = true;
     }
 
+    const taskGranularity = config.get<string>("taskGranularity") as "combined" | "standard" | "detailed" | undefined;
+    if (taskGranularity && taskGranularity !== this.currentPreferences.structural.taskGranularity) {
+      this.currentPreferences.structural.taskGranularity = taskGranularity;
+      changed = true;
+    }
+
     if (changed) {
       this.save();
       this.notifyChange();
@@ -220,6 +226,7 @@ export class PreferenceManager implements vscode.Disposable {
               <option value="detailed" ${p.structural.taskGranularity === "detailed" ? "selected" : ""}>Detailed — atomic sub-steps</option>
             </select>
           </label>
+          <p class="hint">Takes effect on the next adaptation request (Request Adaptation button).</p>
         </section>
 
         <section class="cognitive-prefs">
@@ -230,6 +237,50 @@ export class PreferenceManager implements vscode.Disposable {
           <label><input type="checkbox" id="simplifiedLanguage" ${p.cognitive.simplifiedLanguage ? "checked" : ""}> Simplified Language</label>
         </section>
       </div>
+
+      <script>
+        const vscode = acquireVsCodeApi();
+
+        // Profile switch — resets all defaults for the chosen profile
+        document.getElementById('profile-select').addEventListener('change', e => {
+          vscode.postMessage({ type: 'set_profile', profile: e.target.value });
+        });
+
+        // Visual — font size
+        const fontSizeInput = document.getElementById('fontSize');
+        fontSizeInput.addEventListener('input', e => {
+          e.target.nextElementSibling.textContent = e.target.value + 'px';
+        });
+        fontSizeInput.addEventListener('change', e => {
+          vscode.postMessage({ type: 'update_preferences', preferences: { visual: { fontSize: Number(e.target.value) } } });
+        });
+
+        // Visual — line spacing
+        const lineSpacingInput = document.getElementById('lineSpacing');
+        lineSpacingInput.addEventListener('input', e => {
+          e.target.nextElementSibling.textContent = e.target.value;
+        });
+        lineSpacingInput.addEventListener('change', e => {
+          vscode.postMessage({ type: 'update_preferences', preferences: { visual: { lineSpacing: Number(e.target.value) } } });
+        });
+
+        // Visual — color scheme
+        document.getElementById('colorScheme').addEventListener('change', e => {
+          vscode.postMessage({ type: 'update_preferences', preferences: { visual: { colorScheme: e.target.value } } });
+        });
+
+        // Structural — task granularity
+        document.getElementById('taskGranularity').addEventListener('change', e => {
+          vscode.postMessage({ type: 'update_preferences', preferences: { structural: { taskGranularity: e.target.value } } });
+        });
+
+        // Cognitive — checkboxes
+        ['focusMode', 'textToSpeech', 'breakReminders', 'simplifiedLanguage'].forEach(id => {
+          document.getElementById(id).addEventListener('change', e => {
+            vscode.postMessage({ type: 'update_preferences', preferences: { cognitive: { [id]: e.target.checked } } });
+          });
+        });
+      </script>
     `;
   }
 

@@ -86,6 +86,9 @@ export class NeurocodeController implements vscode.Disposable {
   // from spam clicking. We use the same pattern for adaptation requests.
   private adaptationInProgress = false;
 
+  // Track previous granularity to detect changes that require LLM re-adaptation
+  private lastAdaptedGranularity: string | null = null;
+
   // ─── Timers ─────────────────────────────────────────────────────
   private struggleCheckInterval: ReturnType<typeof setInterval> | undefined;
 
@@ -150,9 +153,18 @@ export class NeurocodeController implements vscode.Disposable {
     this.preferenceManager.onPreferencesChanged(async (prefs) => {
       this.webview.postMessage({ type: "preferences_updated", preferences: prefs });
 
-      // Re-render current assignment if loaded
       const assignment = this.assignmentManager.getCurrentAssignment();
-      if (assignment) {
+      if (!assignment) { return; }
+
+      const granularityChanged =
+        this.lastAdaptedGranularity !== null &&
+        prefs.structural.taskGranularity !== this.lastAdaptedGranularity;
+
+      if (granularityChanged && prefs.adaptiveMode) {
+        // taskGranularity affects LLM output — re-adapt with new granularity
+        await this.requestAdaptation("full_adaptation");
+      } else {
+        // Visual/structural CSS changes — re-render with cached adaptation
         await this.renderAdaptiveView(assignment);
       }
     });
@@ -220,6 +232,10 @@ export class NeurocodeController implements vscode.Disposable {
         } else {
           await this.promptAndLoadAssignment();
         }
+        break;
+
+      case "open_preferences":
+        this.showPreferencesPanel();
         break;
 
       case "request_adaptation":
@@ -412,6 +428,7 @@ export class NeurocodeController implements vscode.Disposable {
       this.currentAdaptation = await this.adaptationEngine.generateAdaptation(request);
       this.adaptationState.isStreaming = false;
       this.adaptationState.lastAdaptationTimestamp = Date.now();
+      this.lastAdaptedGranularity = preferences.structural.taskGranularity;
 
       this.webview.postMessage({
         type: "adaptation_result",
@@ -617,6 +634,22 @@ export class NeurocodeController implements vscode.Disposable {
     panel.webview.html = this.wrapPreferencesHtml(
       this.preferenceManager.generatePreferencesHtml()
     );
+
+    // Handle messages from the preferences panel webview
+    panel.webview.onDidReceiveMessage((message: WebviewMessage) => {
+      switch (message.type) {
+        case "set_profile":
+          this.preferenceManager.setProfile(message.profile);
+          // Re-render panel with new profile defaults
+          panel.webview.html = this.wrapPreferencesHtml(
+            this.preferenceManager.generatePreferencesHtml()
+          );
+          break;
+        case "update_preferences":
+          this.preferenceManager.updatePreferences(message.preferences);
+          break;
+      }
+    });
   }
 
   private wrapPreferencesHtml(innerHtml: string): string {
@@ -630,6 +663,7 @@ export class NeurocodeController implements vscode.Disposable {
   h3 { margin: 1.5em 0 0.5em; color: var(--vscode-descriptionForeground); }
   label { display: block; margin: 0.5em 0; }
   select, input[type=range] { margin-left: 0.5em; }
+  .hint { font-size: 0.8em; color: var(--vscode-descriptionForeground); margin: 0.3em 0 0 0; }
 </style>
 </head><body>${innerHtml}</body></html>`;
   }

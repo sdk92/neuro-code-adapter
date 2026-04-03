@@ -33,19 +33,25 @@ export class CommandExecutor implements vscode.Disposable {
     terminal: vscode.Terminal,
     command: string
   ): Promise<{ output: string; exitCode: number }> {
-    return new Promise((resolve) => {
-      const execution = terminal.shellIntegration!.executeCommand(command);
-      const outputChunks: string[] = [];
+    const execution = terminal.shellIntegration!.executeCommand(command);
+    const outputChunks: string[] = [];
 
-      const stream = execution.read();
-      void (async () => {
-        for await (const chunk of stream) {
-          outputChunks.push(chunk);
+    // Collect output
+    for await (const chunk of execution.read()) {
+      outputChunks.push(chunk);
+    }
+
+    // Exit code arrives via the onDidEndTerminalShellExecution event
+    const exitCode = await new Promise<number>((resolve) => {
+      const disposable = vscode.window.onDidEndTerminalShellExecution((e) => {
+        if (e.execution === execution) {
+          disposable.dispose();
+          resolve(e.exitCode ?? 0);
         }
-        const exitCode = execution.exitCode ?? 0;
-        resolve({ output: outputChunks.join(""), exitCode });
-      })();
+      });
     });
+
+    return { output: outputChunks.join(""), exitCode };
   }
 
   private async executeFireAndForget(

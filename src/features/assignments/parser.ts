@@ -197,28 +197,6 @@ async function structureViaDirectPdf(
     throw new Error("No text in Claude response");
   }
 
-  // ── DEBUG: dump raw response for inspection ──
-  const debugDir = path.join(path.dirname(fileName), "..", "debug");
-  try {
-    if (!fs.existsSync(debugDir)) {
-      fs.mkdirSync(debugDir, { recursive: true });
-    }
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    fs.writeFileSync(
-      path.join(debugDir, `tier1_full_response_${timestamp}.json`),
-      JSON.stringify(response, null, 2),
-      "utf-8"
-    );
-    fs.writeFileSync(
-      path.join(debugDir, `tier1_raw_text_${timestamp}.txt`),
-      textBlock.text,
-      "utf-8"
-    );
-    Logger.log(`DEBUG: Response dumped to ${debugDir}/tier1_*_${timestamp}.*`);
-  } catch (debugErr) {
-    Logger.warn("DEBUG: Failed to write debug files:", debugErr);
-  }
-  // ── END DEBUG ──
 
   // Claude's response continues from the prefilled "{", so prepend it back
   let jsonStr = "{" + textBlock.text.trim();

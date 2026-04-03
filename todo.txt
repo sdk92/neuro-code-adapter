@@ -1,0 +1,4 @@
+context compact(cline and claude code)
+agent swarm
+streaming response
+task granulity
