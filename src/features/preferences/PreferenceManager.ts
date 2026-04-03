@@ -97,12 +97,6 @@ export class PreferenceManager implements vscode.Disposable {
       changed = true;
     }
 
-    const adaptiveMode = config.get<boolean>("adaptiveMode");
-    if (adaptiveMode !== undefined && adaptiveMode !== this.currentPreferences.adaptiveMode) {
-      this.currentPreferences.adaptiveMode = adaptiveMode;
-      changed = true;
-    }
-
     const taskGranularity = config.get<string>("taskGranularity") as "combined" | "standard" | "detailed" | undefined;
     if (taskGranularity && taskGranularity !== this.currentPreferences.structural.taskGranularity) {
       this.currentPreferences.structural.taskGranularity = taskGranularity;
@@ -139,9 +133,6 @@ export class PreferenceManager implements vscode.Disposable {
     }
     if (partial.cognitive) {
       this.currentPreferences.cognitive = { ...this.currentPreferences.cognitive, ...partial.cognitive };
-    }
-    if (partial.adaptiveMode !== undefined) {
-      this.currentPreferences.adaptiveMode = partial.adaptiveMode;
     }
     if (partial.neurodiversityType && partial.neurodiversityType !== this.currentPreferences.neurodiversityType) {
       this.setProfile(partial.neurodiversityType);

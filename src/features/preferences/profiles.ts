@@ -173,6 +173,5 @@ export function getDefaultPreferences(type: NeurodiversityType): UserPreferences
     visual: profile.defaultPreferences.visual!,
     structural: profile.defaultPreferences.structural!,
     cognitive: profile.defaultPreferences.cognitive!,
-    adaptiveMode: true,
   } as UserPreferences;
 }

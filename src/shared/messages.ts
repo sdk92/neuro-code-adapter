@@ -38,7 +38,6 @@ export type ExtensionMessage =
  */
 export interface ExtensionState {
   isInitialized: boolean;
-  adaptiveMode: boolean;
   currentAssignment: Assignment | null;
   currentAdaptation: AdaptationResponse | null;
   userPreferences: UserPreferences;
@@ -58,7 +57,6 @@ export type WebviewMessage =
   | { type: "request_help"; question: string; sectionId?: string }
   | { type: "update_preferences"; preferences: Partial<UserPreferences> }
   | { type: "set_profile"; profile: NeurodiversityType }
-  | { type: "toggle_adaptive_mode"; enabled: boolean }
   | { type: "section_viewed"; sectionId: string }
   | { type: "export_progress" }
   | { type: "connect_mcp"; url: string; transport?: "stdio" | "streamableHttp" }

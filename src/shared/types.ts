@@ -57,7 +57,6 @@ export interface UserPreferences {
   visual: VisualPreferences;
   structural: StructuralPreferences;
   cognitive: CognitivePreferences;
-  adaptiveMode: boolean;
 }
 
 // ─── Assignment Types ───────────────────────────────────────────────────────

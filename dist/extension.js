@@ -34091,8 +34091,7 @@ function getDefaultPreferences(type) {
     neurodiversityType: type,
     visual: profile.defaultPreferences.visual,
     structural: profile.defaultPreferences.structural,
-    cognitive: profile.defaultPreferences.cognitive,
-    adaptiveMode: true
+    cognitive: profile.defaultPreferences.cognitive
   };
 }
 
@@ -34499,11 +34498,6 @@ var PreferenceManager = class _PreferenceManager {
       this.currentPreferences.cognitive.textToSpeech = tts;
       changed = true;
     }
-    const adaptiveMode = config2.get("adaptiveMode");
-    if (adaptiveMode !== void 0 && adaptiveMode !== this.currentPreferences.adaptiveMode) {
-      this.currentPreferences.adaptiveMode = adaptiveMode;
-      changed = true;
-    }
     const taskGranularity = config2.get("taskGranularity");
     if (taskGranularity && taskGranularity !== this.currentPreferences.structural.taskGranularity) {
       this.currentPreferences.structural.taskGranularity = taskGranularity;
@@ -34537,9 +34531,6 @@ var PreferenceManager = class _PreferenceManager {
     }
     if (partial2.cognitive) {
       this.currentPreferences.cognitive = { ...this.currentPreferences.cognitive, ...partial2.cognitive };
-    }
-    if (partial2.adaptiveMode !== void 0) {
-      this.currentPreferences.adaptiveMode = partial2.adaptiveMode;
     }
     if (partial2.neurodiversityType && partial2.neurodiversityType !== this.currentPreferences.neurodiversityType) {
       this.setProfile(partial2.neurodiversityType);
@@ -37750,18 +37741,20 @@ var CommandExecutor = class {
     return this.executeFireAndForget(terminal, command);
   }
   async executeWithShellIntegration(terminal, command) {
-    return new Promise((resolve2) => {
-      const execution = terminal.shellIntegration.executeCommand(command);
-      const outputChunks = [];
-      const stream = execution.read();
-      void (async () => {
-        for await (const chunk of stream) {
-          outputChunks.push(chunk);
+    const execution = terminal.shellIntegration.executeCommand(command);
+    const outputChunks = [];
+    for await (const chunk of execution.read()) {
+      outputChunks.push(chunk);
+    }
+    const exitCode = await new Promise((resolve2) => {
+      const disposable = vscode4.window.onDidEndTerminalShellExecution((e2) => {
+        if (e2.execution === execution) {
+          disposable.dispose();
+          resolve2(e2.exitCode ?? 0);
         }
-        const exitCode = execution.exitCode ?? 0;
-        resolve2({ output: outputChunks.join(""), exitCode });
-      })();
+      });
     });
+    return { output: outputChunks.join(""), exitCode };
   }
   async executeFireAndForget(terminal, command) {
     terminal.sendText(command, true);
@@ -38170,6 +38163,8 @@ var NeurocodeController = class {
   // Cline uses cancelInProgress flag to prevent duplicate cancellations
   // from spam clicking. We use the same pattern for adaptation requests.
   adaptationInProgress = false;
+  // Track previous granularity to detect changes that require LLM re-adaptation
+  lastAdaptedGranularity = null;
   // ─── Timers ─────────────────────────────────────────────────────
   struggleCheckInterval;
   constructor(context, webview) {
@@ -38218,7 +38213,13 @@ var NeurocodeController = class {
     this.preferenceManager.onPreferencesChanged(async (prefs) => {
       this.webview.postMessage({ type: "preferences_updated", preferences: prefs });
       const assignment = this.assignmentManager.getCurrentAssignment();
-      if (assignment) {
+      if (!assignment) {
+        return;
+      }
+      const granularityChanged = this.lastAdaptedGranularity !== null && prefs.structural.taskGranularity !== this.lastAdaptedGranularity;
+      if (granularityChanged) {
+        await this.requestAdaptation("full_adaptation");
+      } else {
         await this.renderAdaptiveView(assignment);
       }
     });
@@ -38293,9 +38294,6 @@ var NeurocodeController = class {
         break;
       case "set_profile":
         this.preferenceManager.setProfile(message.profile);
-        break;
-      case "toggle_adaptive_mode":
-        this.preferenceManager.updatePreferences({ adaptiveMode: message.enabled });
         break;
       case "section_viewed":
         this.sessionContext.setCurrentSection(message.sectionId);
@@ -38414,10 +38412,6 @@ var NeurocodeController = class {
       return;
     }
     const preferences = this.preferenceManager.getPreferences();
-    if (!preferences.adaptiveMode) {
-      await this.renderAdaptiveView(assignment);
-      return;
-    }
     if (this.adaptationInProgress) {
       Logger.log("[Controller] Adaptation already in progress, ignoring duplicate request");
       return;
@@ -38438,6 +38432,7 @@ var NeurocodeController = class {
       this.currentAdaptation = await this.adaptationEngine.generateAdaptation(request);
       this.adaptationState.isStreaming = false;
       this.adaptationState.lastAdaptationTimestamp = Date.now();
+      this.lastAdaptedGranularity = preferences.structural.taskGranularity;
       this.webview.postMessage({
         type: "adaptation_result",
         adaptation: this.currentAdaptation
@@ -38565,7 +38560,6 @@ var NeurocodeController = class {
   postStateToWebview() {
     this.webview.sendStateUpdate({
       isInitialized: true,
-      adaptiveMode: this.preferenceManager.getPreferences().adaptiveMode,
       currentAssignment: this.assignmentManager.getCurrentAssignment(),
       currentAdaptation: this.currentAdaptation,
       userPreferences: this.preferenceManager.getPreferences(),
@@ -38594,16 +38588,6 @@ var NeurocodeController = class {
     Logger.log("Session cleared");
   }
   // ─── Public API for Commands ────────────────────────────────────
-  /**
-   * Toggle adaptive mode on/off (called from command palette).
-   */
-  toggleAdaptiveMode() {
-    const current = this.preferenceManager.getPreferences().adaptiveMode;
-    this.preferenceManager.updatePreferences({ adaptiveMode: !current });
-    vscode6.window.showInformationMessage(
-      `NeuroCode: Adaptive mode ${!current ? "enabled" : "disabled"}`
-    );
-  }
   /**
    * Show the preferences configuration panel.
    */
@@ -38714,9 +38698,7 @@ async function activate(context) {
 function registerCommands(context, ctrl) {
   const commands3 = [
     ["neurocode.openAssignment", () => ctrl.promptAndLoadAssignment()],
-    ["neurocode.importAssignment", () => ctrl.promptAndLoadAssignment()],
     ["neurocode.configurePreferences", () => ctrl.showPreferencesPanel()],
-    ["neurocode.toggleAdaptiveMode", () => ctrl.toggleAdaptiveMode()],
     ["neurocode.getAIHelp", () => ctrl.requestAdaptation("help_request")],
     ["neurocode.scaffoldProject", () => ctrl.requestScaffold()],
     ["neurocode.showDashboard", () => ctrl.showDashboard()],

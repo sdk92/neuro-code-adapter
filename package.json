@@ -14,8 +14,7 @@
     "commands": [
       { "command": "neurocode.openAssignment", "title": "NeuroCode: Open Assignment" },
       { "command": "neurocode.configurePreferences", "title": "NeuroCode: Configure Preferences" },
-      { "command": "neurocode.toggleAdaptiveMode", "title": "NeuroCode: Toggle Adaptive Mode" },
-      { "command": "neurocode.getAIHelp", "title": "NeuroCode: Get AI Help" },
+{ "command": "neurocode.getAIHelp", "title": "NeuroCode: Get AI Help" },
       { "command": "neurocode.scaffoldProject", "title": "NeuroCode: Scaffold Project" },
       { "command": "neurocode.showDashboard", "title": "NeuroCode: Show Dashboard" },
       { "command": "neurocode.exportProgress", "title": "NeuroCode: Export Progress" }
@@ -41,12 +40,7 @@
     "configuration": {
       "title": "NeuroCode Adapter",
       "properties": {
-        "neurocode.adaptiveMode": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable adaptive presentation features"
-        },
-        "neurocode.neurodiversityProfile": {
+"neurocode.neurodiversityProfile": {
           "type": "string",
           "enum": ["neurotypical", "dyslexia", "autism", "adhd"],
           "default": "neurotypical",

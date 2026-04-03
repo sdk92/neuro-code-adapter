@@ -81,7 +81,6 @@ function registerCommands(
   const commands: Array<[string, () => void | Promise<void>]> = [
     ["neurocode.openAssignment", () => ctrl.promptAndLoadAssignment()],
     ["neurocode.configurePreferences", () => ctrl.showPreferencesPanel()],
-    ["neurocode.toggleAdaptiveMode", () => ctrl.toggleAdaptiveMode()],
     ["neurocode.getAIHelp", () => ctrl.requestAdaptation("help_request")],
     ["neurocode.scaffoldProject", () => ctrl.requestScaffold()],
     ["neurocode.showDashboard", () => ctrl.showDashboard()],

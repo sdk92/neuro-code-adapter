@@ -160,7 +160,7 @@ export class NeurocodeController implements vscode.Disposable {
         this.lastAdaptedGranularity !== null &&
         prefs.structural.taskGranularity !== this.lastAdaptedGranularity;
 
-      if (granularityChanged && prefs.adaptiveMode) {
+      if (granularityChanged) {
         // taskGranularity affects LLM output — re-adapt with new granularity
         await this.requestAdaptation("full_adaptation");
       } else {
@@ -253,10 +253,6 @@ export class NeurocodeController implements vscode.Disposable {
 
       case "set_profile":
         this.preferenceManager.setProfile(message.profile);
-        break;
-
-      case "toggle_adaptive_mode":
-        this.preferenceManager.updatePreferences({ adaptiveMode: message.enabled });
         break;
 
       case "section_viewed":
@@ -397,11 +393,6 @@ export class NeurocodeController implements vscode.Disposable {
     }
 
     const preferences = this.preferenceManager.getPreferences();
-    if (!preferences.adaptiveMode) {
-      // Adaptive mode disabled — render without LLM adaptation
-      await this.renderAdaptiveView(assignment);
-      return;
-    }
 
     // ─── Concurrency guard (Cline Controller.cancelInProgress pattern) ───
     if (this.adaptationInProgress) {
@@ -578,7 +569,6 @@ export class NeurocodeController implements vscode.Disposable {
   private postStateToWebview(): void {
     this.webview.sendStateUpdate({
       isInitialized: true,
-      adaptiveMode: this.preferenceManager.getPreferences().adaptiveMode,
       currentAssignment: this.assignmentManager.getCurrentAssignment(),
       currentAdaptation: this.currentAdaptation,
       userPreferences: this.preferenceManager.getPreferences(),
@@ -609,17 +599,6 @@ export class NeurocodeController implements vscode.Disposable {
   }
 
   // ─── Public API for Commands ────────────────────────────────────
-
-  /**
-   * Toggle adaptive mode on/off (called from command palette).
-   */
-  toggleAdaptiveMode(): void {
-    const current = this.preferenceManager.getPreferences().adaptiveMode;
-    this.preferenceManager.updatePreferences({ adaptiveMode: !current });
-    vscode.window.showInformationMessage(
-      `NeuroCode: Adaptive mode ${!current ? "enabled" : "disabled"}`
-    );
-  }
 
   /**
    * Show the preferences configuration panel.
