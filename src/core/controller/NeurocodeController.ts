@@ -89,9 +89,6 @@ export class NeurocodeController implements vscode.Disposable {
   // Track previous granularity to detect changes that require LLM re-adaptation
   private lastAdaptedGranularity: string | null = null;
 
-  // ─── Timers ─────────────────────────────────────────────────────
-  private struggleCheckInterval: ReturnType<typeof setInterval> | undefined;
-
   constructor(
     context: vscode.ExtensionContext,
     webview: WebviewManager
@@ -112,8 +109,6 @@ export class NeurocodeController implements vscode.Disposable {
     this.setupMcpCallbacks();
     this.setupPreferenceCallbacks();
     this.setupWebviewMessageRouter();
-    this.setupStruggleMonitoring();
-
     // Initialize API key from settings
     const config = vscode.workspace.getConfiguration("neurocode");
     const apiKey = config.get<string>("anthropicApiKey", "");
@@ -189,30 +184,6 @@ export class NeurocodeController implements vscode.Disposable {
     });
   }
 
-  /**
-   * Periodic struggle monitoring.
-   * Checks for struggle indicators and triggers supportive adaptation.
-   */
-  private setupStruggleMonitoring(): void {
-    this.struggleDetector.start(10_000); // Check every 10 seconds
-
-    this.struggleCheckInterval = setInterval(async () => {
-      const indicators = this.struggleDetector.getAndClearIndicators();
-      if (indicators.length === 0) { return; }
-
-      // Notify webview of struggle detection
-      for (const indicator of indicators) {
-        this.webview.postMessage({ type: "struggle_detected", indicator });
-      }
-
-      // If high severity, auto-trigger supportive adaptation
-      const highSeverity = indicators.find((i) => i.severity === "high");
-      if (highSeverity && this.assignmentManager.getCurrentAssignment()) {
-        Logger.log(`High severity struggle detected: ${highSeverity.type}. Triggering support.`);
-        await this.requestAdaptation("struggle_support", highSeverity.context.sectionId);
-      }
-    }, 15_000); // Check every 15 seconds
-  }
 
   // ─── Message Handlers ───────────────────────────────────────────
 
@@ -666,11 +637,6 @@ export class NeurocodeController implements vscode.Disposable {
    *   }
    */
   dispose(): void {
-    // Clear timers first (Cline pattern)
-    if (this.struggleCheckInterval) {
-      clearInterval(this.struggleCheckInterval);
-    }
-
     // Clear active session (Cline: await this.clearTask())
     this.clearSession();
 

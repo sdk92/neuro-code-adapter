@@ -152,9 +152,6 @@ function buildAdaptationPrompt(request: AdaptationRequest): string {
     case "help_request":
       prompt += "The student is asking for help. Provide supportive guidance without giving away the answer.\n";
       break;
-    case "struggle_support":
-      prompt += "The student appears to be struggling. Provide encouraging support and simplified guidance.\n";
-      break;
   }
 
   prompt += "\nRespond with ONLY valid JSON matching the AdaptationResponse schema.";
@@ -299,7 +296,7 @@ export class AdaptationEngine {
 
     const response = await this.anthropicClient!.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: prompt }],
     });
