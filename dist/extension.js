@@ -38210,7 +38210,7 @@ var NeurocodeController = class {
       if (!assignment) {
         return;
       }
-      const granularityChanged = this.lastAdaptedGranularity !== null && prefs.structural.taskGranularity !== this.lastAdaptedGranularity;
+      const granularityChanged = prefs.structural.taskGranularity !== this.lastAdaptedGranularity;
       if (granularityChanged) {
         await this.requestAdaptation("full_adaptation");
       } else {

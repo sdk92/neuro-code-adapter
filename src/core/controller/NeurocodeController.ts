@@ -152,7 +152,6 @@ export class NeurocodeController implements vscode.Disposable {
       if (!assignment) { return; }
 
       const granularityChanged =
-        this.lastAdaptedGranularity !== null &&
         prefs.structural.taskGranularity !== this.lastAdaptedGranularity;
 
       if (granularityChanged) {
