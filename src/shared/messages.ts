@@ -53,7 +53,6 @@ export type WebviewMessage =
   | { type: "request_state" }
   | { type: "open_assignment"; filePath: string }
   | { type: "open_preferences" }
-  | { type: "request_adaptation"; sectionId?: string }
   | { type: "request_help"; question: string; sectionId?: string }
   | { type: "update_preferences"; preferences: Partial<UserPreferences> }
   | { type: "set_profile"; profile: NeurodiversityType }

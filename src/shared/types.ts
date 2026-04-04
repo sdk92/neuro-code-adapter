@@ -138,7 +138,7 @@ export interface AdaptationRequest {
   assignment: Assignment;
   userPreferences: UserPreferences;
   sessionContext: SessionContext;
-  requestType: "full_adaptation" | "section_adaptation" | "help_request";
+  requestType: "full_adaptation" | "help_request";
   targetSectionId?: string;
 }
 

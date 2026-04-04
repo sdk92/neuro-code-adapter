@@ -146,9 +146,6 @@ function buildAdaptationPrompt(request: AdaptationRequest): string {
     case "full_adaptation":
       prompt += "Generate a complete adapted version of ALL sections.\n";
       break;
-    case "section_adaptation":
-      prompt += "Generate an adapted version of the specified section only.\n";
-      break;
     case "help_request":
       prompt += "The student is asking for help. Provide supportive guidance without giving away the answer.\n";
       break;

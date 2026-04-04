@@ -208,10 +208,6 @@ export class NeurocodeController implements vscode.Disposable {
         this.showPreferencesPanel();
         break;
 
-      case "request_adaptation":
-        await this.requestAdaptation("section_adaptation", message.sectionId);
-        break;
-
       case "request_help":
         this.struggleDetector.recordHelpSeeking(message.sectionId);
         await this.requestAdaptation("help_request", message.sectionId);
