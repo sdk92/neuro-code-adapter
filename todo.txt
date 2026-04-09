@@ -3,3 +3,4 @@ agent swarm
 streaming response
 task granulity
 chat box dialogue
+totally conversation by "/render" command(render tool ...)

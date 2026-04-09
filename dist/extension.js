@@ -34220,10 +34220,7 @@ ${sectionContent}
   }
   switch (requestType) {
     case "full_adaptation":
-      prompt += "Generate a complete adapted version of ALL sections.\n";
-      break;
-    case "section_adaptation":
-      prompt += "Generate an adapted version of the specified section only.\n";
+      prompt += "Generate a complete adapted version of ALL sections according to the task granularity.\n";
       break;
     case "help_request":
       prompt += "The student is asking for help. Provide supportive guidance without giving away the answer.\n";
@@ -34342,7 +34339,7 @@ ${s2.content}`).join("\n\n"),
     const prompt = buildAdaptationPrompt(request);
     const response = await this.anthropicClient.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 8192,
+      max_tokens: 16e3,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: prompt }]
     });
@@ -37427,6 +37424,41 @@ var AdaptiveRenderer = class {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${this.escapeHtml(assignment.metadata.title)}</title>
+  <style>
+    #nc-loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 9999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.2em;
+    }
+    #nc-loading-overlay .nc-spinner {
+      width: 48px; height: 48px;
+      border: 5px solid rgba(255,255,255,0.25);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: nc-spin 0.9s linear infinite;
+    }
+    #nc-loading-overlay .nc-loading-label {
+      color: #fff;
+      font-size: 1.05em;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-align: center;
+      max-width: 280px;
+    }
+    #nc-loading-overlay .nc-loading-sub {
+      color: rgba(255,255,255,0.7);
+      font-size: 0.85em;
+      text-align: center;
+      max-width: 260px;
+    }
+    @keyframes nc-spin { to { transform: rotate(360deg); } }
+  </style>
   <!-- KaTeX for LaTeX formula rendering (solves garbled math symbols from PDF) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
@@ -37450,6 +37482,13 @@ var AdaptiveRenderer = class {
   </style>
 </head>
 <body>
+  <!-- Loading overlay: shown while LLM adaptation is in progress -->
+  <div id="nc-loading-overlay">
+    <div class="nc-spinner"></div>
+    <div class="nc-loading-label">Adapting content for you...</div>
+    <div class="nc-loading-sub">Generating a personalised view with AI. This may take a few seconds.</div>
+  </div>
+
   <div class="nc-container ${classes}">
     <header class="nc-header">
       <h1>${this.escapeHtml(assignment.metadata.title)}</h1>
@@ -37479,6 +37518,21 @@ var AdaptiveRenderer = class {
 
   <script>
     const vscode = acquireVsCodeApi();
+
+    // Listen for progress messages from the extension host
+    window.addEventListener('message', (event) => {
+      const msg = event.data;
+      if (msg.type === 'adaptation_progress') {
+        const overlay = document.getElementById('nc-loading-overlay');
+        if (!overlay) { return; }
+        if (msg.status === 'started') {
+          overlay.style.display = 'flex';
+        } else {
+          // 'complete' or 'error' \u2014 hide overlay
+          overlay.style.display = 'none';
+        }
+      }
+    });
 
     // Section view tracking
     document.querySelectorAll('.nc-section').forEach(section => {
@@ -38254,9 +38308,6 @@ var NeurocodeController = class {
         break;
       case "open_preferences":
         this.showPreferencesPanel();
-        break;
-      case "request_adaptation":
-        await this.requestAdaptation("section_adaptation", message.sectionId);
         break;
       case "request_help":
         this.struggleDetector.recordHelpSeeking(message.sectionId);

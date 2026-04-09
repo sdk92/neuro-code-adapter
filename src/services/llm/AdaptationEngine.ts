@@ -144,7 +144,7 @@ function buildAdaptationPrompt(request: AdaptationRequest): string {
   // Request type specific instructions
   switch (requestType) {
     case "full_adaptation":
-      prompt += "Generate a complete adapted version of ALL sections.\n";
+      prompt += "Generate a complete adapted version of ALL sections according to the task granularity.\n";
       break;
     case "help_request":
       prompt += "The student is asking for help. Provide supportive guidance without giving away the answer.\n";
@@ -293,7 +293,7 @@ export class AdaptationEngine {
 
     const response = await this.anthropicClient!.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 8192,
+      max_tokens: 16000,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: prompt }],
     });
