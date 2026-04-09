@@ -12,7 +12,6 @@ import type {
   NeurodiversityType,
   ScaffoldProgress,
   SessionContext,
-  StruggleIndicator,
   UserPreferences,
 } from "./types";
 
@@ -25,7 +24,6 @@ export type ExtensionMessage =
   | { type: "adaptation_progress"; status: "started" | "streaming" | "complete" | "error"; message?: string }
   | { type: "preferences_updated"; preferences: UserPreferences }
   | { type: "session_update"; session: SessionContext }
-  | { type: "struggle_detected"; indicator: StruggleIndicator }
   | { type: "mcp_status"; server: McpServerInfo }
   | { type: "error"; code: string; message: string }
   | { type: "info"; message: string }

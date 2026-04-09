@@ -23,14 +23,11 @@
  *   - AdaptationEngine (LLM interaction)
  *   - PreferenceManager (user preferences)
  *   - AssignmentManager (assignment lifecycle)
- *   - ActivityTracker + StruggleDetector (context analysis)
  *   - SessionContextManager (context aggregation)
  *   - AdaptiveRenderer (view generation)
  *   - WebviewManager (UI communication)
  */
 import * as vscode from "vscode";
-import { ActivityTracker } from "@core/context/ActivityTracker";
-import { StruggleDetector } from "@core/context/StruggleDetector";
 import { SessionContextManager } from "@core/context/SessionContext";
 import { WebviewManager } from "@core/webview/WebviewManager";
 import { McpManager } from "@services/mcp/McpManager";
@@ -70,8 +67,6 @@ export class NeurocodeController implements vscode.Disposable {
   readonly adaptationEngine: AdaptationEngine;
   readonly preferenceManager: PreferenceManager;
   readonly assignmentManager: AssignmentManager;
-  readonly activityTracker: ActivityTracker;
-  readonly struggleDetector: StruggleDetector;
   readonly sessionContext: SessionContextManager;
   readonly renderer: AdaptiveRenderer;
   readonly scaffoldEngine: ScaffoldEngine;
@@ -98,9 +93,7 @@ export class NeurocodeController implements vscode.Disposable {
     this.adaptationEngine = new AdaptationEngine();
     this.preferenceManager = new PreferenceManager(context);
     this.assignmentManager = new AssignmentManager(context);
-    this.activityTracker = new ActivityTracker();
-    this.struggleDetector = new StruggleDetector(this.activityTracker);
-    this.sessionContext = new SessionContextManager(this.activityTracker, this.struggleDetector);
+    this.sessionContext = new SessionContextManager();
     this.renderer = new AdaptiveRenderer();
     this.scaffoldEngine = new ScaffoldEngine();
     this.webview = webview;
@@ -209,7 +202,6 @@ export class NeurocodeController implements vscode.Disposable {
         break;
 
       case "request_help":
-        this.struggleDetector.recordHelpSeeking(message.sectionId);
         await this.requestAdaptation("help_request", message.sectionId);
         break;
 
@@ -559,8 +551,6 @@ export class NeurocodeController implements vscode.Disposable {
     }
     this.currentAdaptation = null;
     this.adaptationState = createInitialState();
-    this.activityTracker.reset();
-    this.struggleDetector.reset();
     Logger.log("Session cleared");
   }
 
@@ -636,8 +626,6 @@ export class NeurocodeController implements vscode.Disposable {
     this.clearSession();
 
     // Dispose subsystems
-    this.activityTracker.dispose();
-    this.struggleDetector.dispose();
     this.mcpManager.dispose();
     this.adaptationEngine.dispose();
     this.preferenceManager.dispose();

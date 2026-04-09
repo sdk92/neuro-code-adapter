@@ -101,24 +101,6 @@ export interface Assignment {
 
 // ─── Context & Tracking Types ───────────────────────────────────────────────
 
-export interface ActivityEvent {
-  timestamp: number;
-  type: "file_open" | "file_edit" | "cursor_move" | "section_view" | "help_request"
-    | "pause" | "resume" | "assignment_open" | "assignment_close";
-  data: Record<string, unknown>;
-}
-
-export interface StruggleIndicator {
-  timestamp: number;
-  type: "repeated_edits" | "long_pause" | "rapid_switching" | "error_loop" | "help_seeking";
-  severity: "low" | "medium" | "high";
-  context: {
-    filePath?: string;
-    sectionId?: string;
-    details: string;
-  };
-}
-
 export interface SessionContext {
   sessionId: string;
   startedAt: number;
@@ -126,10 +108,6 @@ export interface SessionContext {
   activeFile?: string;
   currentSection?: string;
   timeOnTask: number;
-  activityEvents: ActivityEvent[];
-  struggleIndicators: StruggleIndicator[];
-  editCount: number;
-  filesSeen: string[];
 }
 
 // ─── Adaptation Types ───────────────────────────────────────────────────────

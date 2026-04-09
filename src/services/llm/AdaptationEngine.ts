@@ -129,15 +129,6 @@ function buildAdaptationPrompt(request: AdaptationRequest): string {
   if (sessionContext) {
     prompt += `### Session Context:\n`;
     prompt += `- Time on task: ${Math.round(sessionContext.timeOnTask / 60_000)} minutes\n`;
-    prompt += `- Total edits: ${sessionContext.editCount}\n`;
-    prompt += `- Files worked on: ${sessionContext.filesSeen.length}\n`;
-
-    if (sessionContext.struggleIndicators.length > 0) {
-      prompt += `- Active struggles:\n`;
-      for (const indicator of sessionContext.struggleIndicators.slice(-5)) {
-        prompt += `  * ${indicator.type} (${indicator.severity}): ${indicator.context.details}\n`;
-      }
-    }
     prompt += "\n";
   }
 
