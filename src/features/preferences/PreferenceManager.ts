@@ -227,49 +227,64 @@ export class PreferenceManager implements vscode.Disposable {
           <label><input type="checkbox" id="breakReminders" ${p.cognitive.breakReminders ? "checked" : ""}> Break Reminders</label>
           <label><input type="checkbox" id="simplifiedLanguage" ${p.cognitive.simplifiedLanguage ? "checked" : ""}> Simplified Language</label>
         </section>
+
+        <div style="margin-top: 2em;">
+          <button id="apply-btn" style="
+            padding: 0.5em 1.5em;
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+          ">Apply</button>
+          <p class="hint" style="margin-top: 0.5em;">Visual changes re-render immediately. Granularity changes trigger a full re-adaptation.</p>
+        </div>
       </div>
 
       <script>
         const vscode = acquireVsCodeApi();
 
-        // Profile switch — resets all defaults for the chosen profile
+        // Profile switch — immediately resets all defaults for the chosen profile
         document.getElementById('profile-select').addEventListener('change', e => {
           vscode.postMessage({ type: 'set_profile', profile: e.target.value });
         });
 
-        // Visual — font size
+        // Visual — font size (preview only, no message sent)
         const fontSizeInput = document.getElementById('fontSize');
         fontSizeInput.addEventListener('input', e => {
           e.target.nextElementSibling.textContent = e.target.value + 'px';
         });
-        fontSizeInput.addEventListener('change', e => {
-          vscode.postMessage({ type: 'update_preferences', preferences: { visual: { fontSize: Number(e.target.value) } } });
-        });
 
-        // Visual — line spacing
+        // Visual — line spacing (preview only)
         const lineSpacingInput = document.getElementById('lineSpacing');
         lineSpacingInput.addEventListener('input', e => {
           e.target.nextElementSibling.textContent = e.target.value;
         });
-        lineSpacingInput.addEventListener('change', e => {
-          vscode.postMessage({ type: 'update_preferences', preferences: { visual: { lineSpacing: Number(e.target.value) } } });
-        });
 
-        // Visual — color scheme
-        document.getElementById('colorScheme').addEventListener('change', e => {
-          vscode.postMessage({ type: 'update_preferences', preferences: { visual: { colorScheme: e.target.value } } });
-        });
+        // Apply button — collect all current values and send as one message
+        document.getElementById('apply-btn').addEventListener('click', () => {
+          const preferences = {
+            visual: {
+              fontSize: Number(document.getElementById('fontSize').value),
+              lineSpacing: Number(document.getElementById('lineSpacing').value),
+              colorScheme: document.getElementById('colorScheme').value,
+            },
+            structural: {
+              taskGranularity: document.getElementById('taskGranularity').value,
+            },
+            cognitive: {
+              focusMode: document.getElementById('focusMode').checked,
+              textToSpeech: document.getElementById('textToSpeech').checked,
+              breakReminders: document.getElementById('breakReminders').checked,
+              simplifiedLanguage: document.getElementById('simplifiedLanguage').checked,
+            },
+          };
+          vscode.postMessage({ type: 'apply_preferences', preferences });
 
-        // Structural — task granularity
-        document.getElementById('taskGranularity').addEventListener('change', e => {
-          vscode.postMessage({ type: 'update_preferences', preferences: { structural: { taskGranularity: e.target.value } } });
-        });
-
-        // Cognitive — checkboxes
-        ['focusMode', 'textToSpeech', 'breakReminders', 'simplifiedLanguage'].forEach(id => {
-          document.getElementById(id).addEventListener('change', e => {
-            vscode.postMessage({ type: 'update_preferences', preferences: { cognitive: { [id]: e.target.checked } } });
-          });
+          const btn = document.getElementById('apply-btn');
+          btn.textContent = 'Applied!';
+          btn.disabled = true;
+          setTimeout(() => { btn.textContent = 'Apply'; btn.disabled = false; }, 1500);
         });
       </script>
     `;

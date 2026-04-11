@@ -18,7 +18,6 @@ import type {
   AdaptedSection,
   Assignment,
   NeurodiversityType,
-  SessionContext,
   SuggestedAction,
   UserPreferences,
   VisualModification,
@@ -87,7 +86,7 @@ Adaptation principles by neurodiversity type:
 // ─── Prompt Builder ──────────────────────────────────────────────────────────
 
 function buildAdaptationPrompt(request: AdaptationRequest): string {
-  const { assignment, userPreferences, sessionContext, requestType, targetSectionId } = request;
+  const { assignment, userPreferences, requestType, targetSectionId } = request;
   const profile = NEURODIVERSITY_PROFILES[userPreferences.neurodiversityType];
 
   const sections = targetSectionId
@@ -125,20 +124,16 @@ function buildAdaptationPrompt(request: AdaptationRequest): string {
   }
   prompt += "\n";
 
-  // Include session context if available
-  if (sessionContext) {
-    prompt += `### Session Context:\n`;
-    prompt += `- Time on task: ${Math.round(sessionContext.timeOnTask / 60_000)} minutes\n`;
-    prompt += "\n";
-  }
 
   // Request type specific instructions
   switch (requestType) {
     case "full_adaptation":
       prompt += "Generate a complete adapted version of ALL sections according to the task granularity.\n";
+      prompt += "Leave suggestedActions as an empty array [] — do NOT generate hints or suggestions.\n";
       break;
     case "help_request":
       prompt += "The student is asking for help. Provide supportive guidance without giving away the answer.\n";
+      prompt += "You MUST populate suggestedActions with 2-3 items of type 'hint' or 'encouragement'. Do NOT leave suggestedActions empty.\n";
       break;
   }
 
@@ -259,7 +254,6 @@ export class AdaptationEngine {
         .join("\n\n"),
       neurodiversityType: request.userPreferences.neurodiversityType,
       preferences: request.userPreferences,
-      sessionSummary: request.sessionContext,
     });
 
     const textContent = result.content.find((c) => c.type === "text");
@@ -282,12 +276,18 @@ export class AdaptationEngine {
   private async generateViaApi(request: AdaptationRequest): Promise<AdaptationResponse> {
     const prompt = buildAdaptationPrompt(request);
 
-    const response = await this.anthropicClient!.messages.create({
+    const stream = this.anthropicClient!.messages.stream({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 16000,
+      max_tokens: 64000,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: prompt }],
     });
+
+    const response = await stream.finalMessage();
+
+    if (response.stop_reason === "max_tokens") {
+      throw new Error("Response truncated: output exceeded max_tokens, JSON will be incomplete");
+    }
 
     const textBlock = response.content.find((b) => b.type === "text");
     if (!textBlock || textBlock.type !== "text") {

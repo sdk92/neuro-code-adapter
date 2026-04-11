@@ -75,7 +75,12 @@ export class ScaffoldEngine implements vscode.Disposable {
       systemHint,
       "",
       "Think step by step. Use tools one at a time. Do not explain yourself — just call tools.",
-      "When the project is ready, call open_in_editor on the main entry file, then stop.",
+      "Rules for the agentic loop:",
+      "- NEVER use `cd` as a standalone command. Use the `cwd` parameter of execute_command instead.",
+      "- NEVER retry a command that already returned exit code 0 — treat it as done.",
+      "- 'Requirement already satisfied' means the package IS installed — do NOT install it again.",
+      "- Once the environment is set up (venv created, packages installed), IMMEDIATELY move on to creating source files with create_file.",
+      "- After creating all files, call open_in_editor on the main entry file, then stop.",
     ].join("\n");
 
     const userMessage = buildScaffoldPrompt(request);

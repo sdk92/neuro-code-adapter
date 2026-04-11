@@ -25,7 +25,8 @@ export class AdaptiveRenderer {
   render(
     assignment: Assignment,
     preferences: UserPreferences,
-    adaptation?: AdaptationResponse
+    adaptation?: AdaptationResponse,
+    requestType: "full_adaptation" | "help_request" = "full_adaptation"
   ): string {
     const strategy = buildStrategy(preferences);
 
@@ -50,7 +51,8 @@ export class AdaptiveRenderer {
       ? `<div class="nc-support-message">${this.escapeHtml(adaptation.supportMessage)}</div>`
       : "";
 
-    const actionsHtml = adaptation?.suggestedActions?.length
+    // suggestedActions are only shown for help_request — not during full adaptation.
+    const actionsHtml = requestType === "help_request" && adaptation?.suggestedActions?.length
       ? `<div class="nc-actions">
           ${adaptation.suggestedActions
             .map(

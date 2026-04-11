@@ -20,7 +20,8 @@ const EXECUTE_COMMAND_TOOL: AnthropicTool = {
   description:
     "Run a shell command to scaffold the project (e.g. create-react-app, dotnet new, cargo init). " +
     "Always prefer official project-creation CLIs. Keep commands non-interactive (use --yes / -y flags). " +
-    "Each command call must do one logical step only.",
+    "Each command call must do one logical step only. " +
+    "NEVER use `cd` as a standalone command — use the `cwd` parameter instead to set the working directory.",
   input_schema: {
     type: "object" as const,
     properties: {
@@ -89,7 +90,7 @@ const OPEN_IN_EDITOR_TOOL: AnthropicTool = {
 const LANGUAGE_HINTS: Record<string, string> = {
   typescript: "Use `npm create vite@latest -- --template vanilla-ts` or `npx create-react-app --template typescript`.",
   javascript: "Use `npm create vite@latest -- --template vanilla` or `npx create-react-app`.",
-  python: "Use `python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt` pattern.",
+  python: "Use `python3 -m venv .venv` on Linux/macOS or `python -m venv .venv` on Windows, then activate and pip install.",
   csharp: "Use `dotnet new <template>` (console / webapi / mvc / xunit etc.).",
   java: "Use `mvn archetype:generate -DinteractiveMode=false` or `gradle init --type java-application`.",
   rust: "Use `cargo init` or `cargo new <name>`.",

@@ -11,7 +11,6 @@ import type {
   McpServerInfo,
   NeurodiversityType,
   ScaffoldProgress,
-  SessionContext,
   UserPreferences,
 } from "./types";
 
@@ -23,7 +22,6 @@ export type ExtensionMessage =
   | { type: "adaptation_result"; adaptation: AdaptationResponse }
   | { type: "adaptation_progress"; status: "started" | "streaming" | "complete" | "error"; message?: string }
   | { type: "preferences_updated"; preferences: UserPreferences }
-  | { type: "session_update"; session: SessionContext }
   | { type: "mcp_status"; server: McpServerInfo }
   | { type: "error"; code: string; message: string }
   | { type: "info"; message: string }
@@ -39,7 +37,6 @@ export interface ExtensionState {
   currentAssignment: Assignment | null;
   currentAdaptation: AdaptationResponse | null;
   userPreferences: UserPreferences;
-  sessionContext: SessionContext | null;
   mcpServer: McpServerInfo | null;
   version: string;
 }
@@ -52,11 +49,11 @@ export type WebviewMessage =
   | { type: "open_assignment"; filePath: string }
   | { type: "open_preferences" }
   | { type: "request_help"; question: string; sectionId?: string }
-  | { type: "update_preferences"; preferences: Partial<UserPreferences> }
   | { type: "set_profile"; profile: NeurodiversityType }
   | { type: "section_viewed"; sectionId: string }
   | { type: "export_progress" }
   | { type: "connect_mcp"; url: string; transport?: "stdio" | "streamableHttp" }
   | { type: "disconnect_mcp" }
   | { type: "request_scaffold" }
+  | { type: "apply_preferences"; preferences: Partial<UserPreferences> }
   | { type: "scaffold_approval_response"; toolUseId: string; approved: boolean };

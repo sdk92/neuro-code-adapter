@@ -13706,7 +13706,7 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode7 = __toESM(require("vscode"));
+var vscode6 = __toESM(require("vscode"));
 
 // src/shared/logger.ts
 var outputChannel;
@@ -13900,494 +13900,7 @@ var WebviewManager = class {
 };
 
 // src/core/controller/NeurocodeController.ts
-var vscode6 = __toESM(require("vscode"));
-
-// src/core/context/ActivityTracker.ts
-var vscode = __toESM(require("vscode"));
-var IDLE_THRESHOLD_MS = 6e4;
-var ActivityTracker = class {
-  events = [];
-  disposables = [];
-  lastActivityTimestamp = Date.now();
-  isPaused = false;
-  editCounts = /* @__PURE__ */ new Map();
-  fileSwitchTimestamps = [];
-  idleCheckInterval;
-  constructor() {
-    this.setupListeners();
-    this.startIdleDetection();
-  }
-  /**
-   * Set up VS Code event listeners for tracking student activity.
-   * Mirrors Cline's approach of using workspace.onDidChangeTextDocument
-   * and window.onDidChangeActiveTextEditor.
-   */
-  setupListeners() {
-    this.disposables.push(
-      vscode.workspace.onDidChangeTextDocument((event) => {
-        if (event.contentChanges.length === 0) {
-          return;
-        }
-        const filePath = event.document.uri.fsPath;
-        this.recordActivity("file_edit", {
-          filePath,
-          changeCount: event.contentChanges.length,
-          lineCount: event.document.lineCount
-        });
-        this.editCounts.set(filePath, (this.editCounts.get(filePath) ?? 0) + 1);
-      })
-    );
-    this.disposables.push(
-      vscode.window.onDidChangeActiveTextEditor((editor) => {
-        if (!editor) {
-          return;
-        }
-        const filePath = editor.document.uri.fsPath;
-        this.fileSwitchTimestamps.push(Date.now());
-        this.recordActivity("file_open", { filePath });
-      })
-    );
-    let cursorDebounce;
-    this.disposables.push(
-      vscode.window.onDidChangeTextEditorSelection((event) => {
-        if (cursorDebounce) {
-          clearTimeout(cursorDebounce);
-        }
-        cursorDebounce = setTimeout(() => {
-          const pos = event.selections[0]?.active;
-          if (pos) {
-            this.recordActivity("cursor_move", {
-              filePath: event.textEditor.document.uri.fsPath,
-              line: pos.line,
-              character: pos.character
-            });
-          }
-        }, 500);
-      })
-    );
-    this.disposables.push(
-      vscode.workspace.onDidOpenTextDocument((doc) => {
-        this.recordActivity("file_open", { filePath: doc.uri.fsPath });
-      })
-    );
-  }
-  /**
-   * Idle detection — detects pauses in student activity.
-   * If no activity for IDLE_THRESHOLD_MS, emit a "pause" event.
-   * When activity resumes, emit a "resume" event.
-   */
-  startIdleDetection() {
-    this.idleCheckInterval = setInterval(() => {
-      const elapsed = Date.now() - this.lastActivityTimestamp;
-      if (elapsed > IDLE_THRESHOLD_MS && !this.isPaused) {
-        this.isPaused = true;
-        this.events.push({
-          timestamp: this.lastActivityTimestamp + IDLE_THRESHOLD_MS,
-          type: "pause",
-          data: { idleDurationMs: elapsed }
-        });
-        Logger.debug(`Student idle for ${Math.round(elapsed / 1e3)}s \u2014 pause detected`);
-      }
-    }, 1e4);
-  }
-  /**
-   * Record an activity event with automatic pause/resume detection.
-   */
-  recordActivity(type, data = {}) {
-    const now = Date.now();
-    if (this.isPaused) {
-      this.isPaused = false;
-      this.events.push({
-        timestamp: now,
-        type: "resume",
-        data: { pauseDurationMs: now - this.lastActivityTimestamp }
-      });
-    }
-    this.lastActivityTimestamp = now;
-    this.events.push({ timestamp: now, type, data });
-  }
-  /**
-   * Get and clear accumulated events.
-   * Follows Cline's getAndClearRecentlyModifiedFiles pattern.
-   */
-  getAndClearEvents() {
-    const events = [...this.events];
-    this.events = [];
-    return events;
-  }
-  /**
-   * Peek at recent events without clearing them.
-   * Used by StruggleDetector for read-only analysis.
-   *
-   * This solves a design gap: getAndClear is for the SessionContextManager
-   * (which consumes events), while peekEvents is for the StruggleDetector
-   * (which just analyses them). Both can coexist because detection runs
-   * more frequently than context refresh.
-   *
-   * @param windowMs Only return events within this time window
-   */
-  peekEvents(windowMs) {
-    if (windowMs === void 0) {
-      return [...this.events];
-    }
-    const cutoff = Date.now() - windowMs;
-    return this.events.filter((e2) => e2.timestamp > cutoff);
-  }
-  /**
-   * Get edit count for a specific file.
-   */
-  getEditCount(filePath) {
-    return this.editCounts.get(filePath) ?? 0;
-  }
-  /**
-   * Get total edit count across all files.
-   */
-  getTotalEditCount() {
-    let total = 0;
-    for (const count of this.editCounts.values()) {
-      total += count;
-    }
-    return total;
-  }
-  /**
-   * Get all files that have been edited.
-   */
-  getEditedFiles() {
-    return Array.from(this.editCounts.keys());
-  }
-  /**
-   * Count rapid file switches within a time window.
-   * Used by StruggleDetector to identify confusion.
-   */
-  getRecentFileSwitchCount(windowMs = 3e4) {
-    const cutoff = Date.now() - windowMs;
-    return this.fileSwitchTimestamps.filter((ts) => ts > cutoff).length;
-  }
-  /**
-   * Get current idle duration in milliseconds.
-   */
-  getCurrentIdleDuration() {
-    return Date.now() - this.lastActivityTimestamp;
-  }
-  /**
-   * Reset all tracking state. Called when a new assignment is opened.
-   */
-  reset() {
-    this.events = [];
-    this.editCounts.clear();
-    this.fileSwitchTimestamps = [];
-    this.lastActivityTimestamp = Date.now();
-    this.isPaused = false;
-  }
-  dispose() {
-    if (this.idleCheckInterval) {
-      clearInterval(this.idleCheckInterval);
-    }
-    this.disposables.forEach((d2) => d2.dispose());
-    this.disposables = [];
-  }
-};
-
-// src/core/context/StruggleDetector.ts
-var DEFAULT_THRESHOLDS = {
-  repeatedEditsCount: 15,
-  repeatedEditsWindowMs: 6e4,
-  // 15 edits in same file within 1 min
-  longPauseMs: 18e4,
-  // 3 minutes of inactivity
-  rapidSwitchCount: 8,
-  rapidSwitchWindowMs: 3e4,
-  // 8 file switches in 30 seconds
-  cooldownMs: 12e4
-  // Don't re-emit same indicator type within 2 min
-};
-var StruggleDetector = class {
-  activityTracker;
-  thresholds;
-  indicators = [];
-  lastEmitted = /* @__PURE__ */ new Map();
-  detectionInterval;
-  constructor(activityTracker, thresholds) {
-    this.activityTracker = activityTracker;
-    this.thresholds = { ...DEFAULT_THRESHOLDS, ...thresholds };
-  }
-  /**
-   * Start periodic struggle detection.
-   */
-  start(intervalMs = 1e4) {
-    this.detectionInterval = setInterval(() => {
-      this.detectAll();
-    }, intervalMs);
-    Logger.debug("StruggleDetector started");
-  }
-  /**
-   * Stop periodic detection.
-   */
-  stop() {
-    if (this.detectionInterval) {
-      clearInterval(this.detectionInterval);
-      this.detectionInterval = void 0;
-    }
-  }
-  /**
-   * Run all detection heuristics.
-   */
-  detectAll() {
-    this.detectRepeatedEdits();
-    this.detectLongPause();
-    this.detectRapidSwitching();
-  }
-  /**
-   * Detect repeated edits in the same file.
-   * Pattern: Student editing the same region many times = possibly stuck on a problem.
-   */
-  detectRepeatedEdits() {
-    const events = this.getRecentEvents(this.thresholds.repeatedEditsWindowMs);
-    const editsByFile = /* @__PURE__ */ new Map();
-    for (const event of events) {
-      if (event.type === "file_edit" && event.data.filePath) {
-        const path4 = event.data.filePath;
-        editsByFile.set(path4, (editsByFile.get(path4) ?? 0) + 1);
-      }
-    }
-    for (const [filePath, count] of editsByFile) {
-      if (count >= this.thresholds.repeatedEditsCount) {
-        this.emitIndicator({
-          timestamp: Date.now(),
-          type: "repeated_edits",
-          severity: count >= this.thresholds.repeatedEditsCount * 2 ? "high" : "medium",
-          context: {
-            filePath,
-            details: `${count} edits in ${Math.round(this.thresholds.repeatedEditsWindowMs / 1e3)}s`
-          }
-        });
-      }
-    }
-  }
-  /**
-   * Detect long pauses suggesting confusion or frustration.
-   */
-  detectLongPause() {
-    const idleDuration = this.activityTracker.getCurrentIdleDuration();
-    if (idleDuration >= this.thresholds.longPauseMs) {
-      const severity = idleDuration >= this.thresholds.longPauseMs * 2 ? "high" : "medium";
-      this.emitIndicator({
-        timestamp: Date.now(),
-        type: "long_pause",
-        severity,
-        context: {
-          details: `Inactive for ${Math.round(idleDuration / 6e4)} minutes`
-        }
-      });
-    }
-  }
-  /**
-   * Detect rapid file switching suggesting disorientation.
-   */
-  detectRapidSwitching() {
-    const switchCount = this.activityTracker.getRecentFileSwitchCount(
-      this.thresholds.rapidSwitchWindowMs
-    );
-    if (switchCount >= this.thresholds.rapidSwitchCount) {
-      this.emitIndicator({
-        timestamp: Date.now(),
-        type: "rapid_switching",
-        severity: switchCount >= this.thresholds.rapidSwitchCount * 1.5 ? "high" : "medium",
-        context: {
-          details: `${switchCount} file switches in ${Math.round(this.thresholds.rapidSwitchWindowMs / 1e3)}s`
-        }
-      });
-    }
-  }
-  /**
-   * Manually record a help-seeking indicator (called from outside).
-   */
-  recordHelpSeeking(sectionId) {
-    this.emitIndicator({
-      timestamp: Date.now(),
-      type: "help_seeking",
-      severity: "low",
-      context: {
-        sectionId,
-        details: "Student requested help"
-      }
-    });
-  }
-  /**
-   * Emit an indicator with cooldown to avoid flooding.
-   */
-  emitIndicator(indicator) {
-    const lastTime = this.lastEmitted.get(indicator.type) ?? 0;
-    if (Date.now() - lastTime < this.thresholds.cooldownMs) {
-      return;
-    }
-    this.indicators.push(indicator);
-    this.lastEmitted.set(indicator.type, Date.now());
-    Logger.debug(
-      `Struggle detected: ${indicator.type} (${indicator.severity}) \u2014 ${indicator.context.details}`
-    );
-  }
-  /**
-   * Get and clear accumulated indicators.
-   * Follows Cline's getAndClear pattern.
-   */
-  getAndClearIndicators() {
-    const indicators = [...this.indicators];
-    this.indicators = [];
-    return indicators;
-  }
-  /**
-   * Get all indicators without clearing.
-   */
-  getIndicators() {
-    return [...this.indicators];
-  }
-  /**
-   * Get recent activity events from the tracker (peek without clearing).
-   * Uses ActivityTracker.peekEvents() for read-only access.
-   */
-  getRecentEvents(windowMs) {
-    return this.activityTracker.peekEvents(windowMs);
-  }
-  /**
-   * Reset detection state.
-   */
-  reset() {
-    this.indicators = [];
-    this.lastEmitted.clear();
-  }
-  dispose() {
-    this.stop();
-  }
-};
-
-// src/core/context/SessionContext.ts
-function generateSessionId() {
-  return `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-}
-var SessionContextManager = class {
-  activityTracker;
-  struggleDetector;
-  currentSession;
-  constructor(activityTracker, struggleDetector) {
-    this.activityTracker = activityTracker;
-    this.struggleDetector = struggleDetector;
-    this.currentSession = this.createNewSession();
-  }
-  /**
-   * Create a fresh session.
-   */
-  createNewSession() {
-    return {
-      sessionId: generateSessionId(),
-      startedAt: Date.now(),
-      assignmentId: void 0,
-      activeFile: void 0,
-      currentSection: void 0,
-      timeOnTask: 0,
-      activityEvents: [],
-      struggleIndicators: [],
-      editCount: 0,
-      filesSeen: []
-    };
-  }
-  /**
-   * Start a new session for an assignment.
-   */
-  startSession(assignmentId) {
-    this.activityTracker.reset();
-    this.struggleDetector.reset();
-    this.currentSession = this.createNewSession();
-    this.currentSession.assignmentId = assignmentId;
-    Logger.log(`Session started for assignment: ${assignmentId}`);
-  }
-  /**
-   * Update the current session with latest tracking data.
-   * Called before sending context to the LLM.
-   */
-  refreshContext() {
-    const newEvents = this.activityTracker.getAndClearEvents();
-    const newIndicators = this.struggleDetector.getAndClearIndicators();
-    this.currentSession.activityEvents.push(...newEvents);
-    this.currentSession.struggleIndicators.push(...newIndicators);
-    this.currentSession.timeOnTask = Date.now() - this.currentSession.startedAt;
-    this.currentSession.editCount = this.activityTracker.getTotalEditCount();
-    this.currentSession.filesSeen = this.activityTracker.getEditedFiles();
-    return { ...this.currentSession };
-  }
-  /**
-   * Get a compact summary of the session for LLM context.
-   * We don't send all raw events — we summarize to save tokens.
-   */
-  getContextSummary() {
-    const session = this.refreshContext();
-    const recentEvents = session.activityEvents.slice(-20);
-    const activeIndicators = session.struggleIndicators.filter(
-      (i2) => Date.now() - i2.timestamp < 3e5
-      // Last 5 minutes
-    );
-    return {
-      sessionId: session.sessionId,
-      assignmentId: session.assignmentId,
-      timeOnTaskMinutes: Math.round(session.timeOnTask / 6e4),
-      totalEdits: session.editCount,
-      filesWorkedOn: session.filesSeen.length,
-      currentSection: session.currentSection,
-      activeFile: session.activeFile,
-      recentActivitySummary: this.summarizeEvents(recentEvents),
-      activeStruggles: activeIndicators.map((i2) => ({
-        type: i2.type,
-        severity: i2.severity,
-        details: i2.context.details
-      })),
-      isCurrentlyIdle: this.activityTracker.getCurrentIdleDuration() > 6e4
-    };
-  }
-  /**
-   * Summarize activity events into a compact description.
-   */
-  summarizeEvents(events) {
-    if (events.length === 0) {
-      return "No recent activity";
-    }
-    const counts = {};
-    for (const event of events) {
-      counts[event.type] = (counts[event.type] ?? 0) + 1;
-    }
-    return Object.entries(counts).map(([type, count]) => `${type}: ${count}`).join(", ");
-  }
-  /**
-   * Update which section the student is currently viewing.
-   */
-  setCurrentSection(sectionId) {
-    this.currentSession.currentSection = sectionId;
-    this.activityTracker.recordActivity("section_view", { sectionId });
-  }
-  /**
-   * Update the active file.
-   */
-  setActiveFile(filePath) {
-    this.currentSession.activeFile = filePath;
-  }
-  /**
-   * Get the raw session object.
-   */
-  getSession() {
-    return { ...this.currentSession };
-  }
-  /**
-   * End the current session.
-   */
-  endSession() {
-    const finalSession = this.refreshContext();
-    Logger.log(
-      `Session ended: ${finalSession.sessionId}, duration: ${Math.round(finalSession.timeOnTask / 6e4)}min, edits: ${finalSession.editCount}, struggles: ${finalSession.struggleIndicators.length}`
-    );
-    return finalSession;
-  }
-  dispose() {
-  }
-};
+var vscode5 = __toESM(require("vscode"));
 
 // node_modules/zod/v3/helpers/util.js
 var util;
@@ -34152,7 +33665,7 @@ Adaptation principles by neurodiversity type:
 - Balanced structure and visual hierarchy
 - Clear but not over-simplified language`;
 function buildAdaptationPrompt(request) {
-  const { assignment, userPreferences, sessionContext, requestType, targetSectionId } = request;
+  const { assignment, userPreferences, requestType, targetSectionId } = request;
   const profile = NEURODIVERSITY_PROFILES[userPreferences.neurodiversityType];
   const sections = targetSectionId ? assignment.sections.filter((s2) => s2.id === targetSectionId) : assignment.sections;
   const sectionContent = sections.map((s2) => `## Section: ${s2.title} (id: ${s2.id}, type: ${s2.type})
@@ -34199,31 +33712,14 @@ ${sectionContent}
 `;
   }
   prompt += "\n";
-  if (sessionContext) {
-    prompt += `### Session Context:
-`;
-    prompt += `- Time on task: ${Math.round(sessionContext.timeOnTask / 6e4)} minutes
-`;
-    prompt += `- Total edits: ${sessionContext.editCount}
-`;
-    prompt += `- Files worked on: ${sessionContext.filesSeen.length}
-`;
-    if (sessionContext.struggleIndicators.length > 0) {
-      prompt += `- Active struggles:
-`;
-      for (const indicator of sessionContext.struggleIndicators.slice(-5)) {
-        prompt += `  * ${indicator.type} (${indicator.severity}): ${indicator.context.details}
-`;
-      }
-    }
-    prompt += "\n";
-  }
   switch (requestType) {
     case "full_adaptation":
       prompt += "Generate a complete adapted version of ALL sections according to the task granularity.\n";
+      prompt += "Leave suggestedActions as an empty array [] \u2014 do NOT generate hints or suggestions.\n";
       break;
     case "help_request":
       prompt += "The student is asking for help. Provide supportive guidance without giving away the answer.\n";
+      prompt += "You MUST populate suggestedActions with 2-3 items of type 'hint' or 'encouragement'. Do NOT leave suggestedActions empty.\n";
       break;
   }
   prompt += "\nRespond with ONLY valid JSON matching the AdaptationResponse schema.";
@@ -34318,8 +33814,7 @@ var AdaptationEngine = class {
       sectionContent: request.assignment.sections.map((s2) => `## ${s2.title}
 ${s2.content}`).join("\n\n"),
       neurodiversityType: request.userPreferences.neurodiversityType,
-      preferences: request.userPreferences,
-      sessionSummary: request.sessionContext
+      preferences: request.userPreferences
     });
     const textContent = result.content.find((c2) => c2.type === "text");
     if (!textContent || textContent.type !== "text") {
@@ -34337,12 +33832,16 @@ ${s2.content}`).join("\n\n"),
    */
   async generateViaApi(request) {
     const prompt = buildAdaptationPrompt(request);
-    const response = await this.anthropicClient.messages.create({
+    const stream = this.anthropicClient.messages.stream({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 16e3,
+      max_tokens: 64e3,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: prompt }]
     });
+    const response = await stream.finalMessage();
+    if (response.stop_reason === "max_tokens") {
+      throw new Error("Response truncated: output exceeded max_tokens, JSON will be incomplete");
+    }
     const textBlock = response.content.find((b2) => b2.type === "text");
     if (!textBlock || textBlock.type !== "text") {
       throw new Error("No text in API response");
@@ -34424,7 +33923,7 @@ ${content}`;
 };
 
 // src/features/preferences/PreferenceManager.ts
-var vscode2 = __toESM(require("vscode"));
+var vscode = __toESM(require("vscode"));
 var PreferenceManager = class _PreferenceManager {
   context;
   currentPreferences;
@@ -34437,15 +33936,15 @@ var PreferenceManager = class _PreferenceManager {
     if (saved) {
       this.currentPreferences = saved;
     } else {
-      const config2 = vscode2.workspace.getConfiguration("neurocode");
+      const config2 = vscode.workspace.getConfiguration("neurocode");
       const profileType = config2.get("neurodiversityProfile", "neurotypical");
       this.currentPreferences = getDefaultPreferences(profileType);
       this.syncFromVscodeSettings(config2);
     }
     this.disposables.push(
-      vscode2.workspace.onDidChangeConfiguration((e2) => {
+      vscode.workspace.onDidChangeConfiguration((e2) => {
         if (e2.affectsConfiguration("neurocode")) {
-          const config2 = vscode2.workspace.getConfiguration("neurocode");
+          const config2 = vscode.workspace.getConfiguration("neurocode");
           this.syncFromVscodeSettings(config2);
         }
       })
@@ -34617,49 +34116,64 @@ var PreferenceManager = class _PreferenceManager {
           <label><input type="checkbox" id="breakReminders" ${p2.cognitive.breakReminders ? "checked" : ""}> Break Reminders</label>
           <label><input type="checkbox" id="simplifiedLanguage" ${p2.cognitive.simplifiedLanguage ? "checked" : ""}> Simplified Language</label>
         </section>
+
+        <div style="margin-top: 2em;">
+          <button id="apply-btn" style="
+            padding: 0.5em 1.5em;
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+          ">Apply</button>
+          <p class="hint" style="margin-top: 0.5em;">Visual changes re-render immediately. Granularity changes trigger a full re-adaptation.</p>
+        </div>
       </div>
 
       <script>
         const vscode = acquireVsCodeApi();
 
-        // Profile switch \u2014 resets all defaults for the chosen profile
+        // Profile switch \u2014 immediately resets all defaults for the chosen profile
         document.getElementById('profile-select').addEventListener('change', e => {
           vscode.postMessage({ type: 'set_profile', profile: e.target.value });
         });
 
-        // Visual \u2014 font size
+        // Visual \u2014 font size (preview only, no message sent)
         const fontSizeInput = document.getElementById('fontSize');
         fontSizeInput.addEventListener('input', e => {
           e.target.nextElementSibling.textContent = e.target.value + 'px';
         });
-        fontSizeInput.addEventListener('change', e => {
-          vscode.postMessage({ type: 'update_preferences', preferences: { visual: { fontSize: Number(e.target.value) } } });
-        });
 
-        // Visual \u2014 line spacing
+        // Visual \u2014 line spacing (preview only)
         const lineSpacingInput = document.getElementById('lineSpacing');
         lineSpacingInput.addEventListener('input', e => {
           e.target.nextElementSibling.textContent = e.target.value;
         });
-        lineSpacingInput.addEventListener('change', e => {
-          vscode.postMessage({ type: 'update_preferences', preferences: { visual: { lineSpacing: Number(e.target.value) } } });
-        });
 
-        // Visual \u2014 color scheme
-        document.getElementById('colorScheme').addEventListener('change', e => {
-          vscode.postMessage({ type: 'update_preferences', preferences: { visual: { colorScheme: e.target.value } } });
-        });
+        // Apply button \u2014 collect all current values and send as one message
+        document.getElementById('apply-btn').addEventListener('click', () => {
+          const preferences = {
+            visual: {
+              fontSize: Number(document.getElementById('fontSize').value),
+              lineSpacing: Number(document.getElementById('lineSpacing').value),
+              colorScheme: document.getElementById('colorScheme').value,
+            },
+            structural: {
+              taskGranularity: document.getElementById('taskGranularity').value,
+            },
+            cognitive: {
+              focusMode: document.getElementById('focusMode').checked,
+              textToSpeech: document.getElementById('textToSpeech').checked,
+              breakReminders: document.getElementById('breakReminders').checked,
+              simplifiedLanguage: document.getElementById('simplifiedLanguage').checked,
+            },
+          };
+          vscode.postMessage({ type: 'apply_preferences', preferences });
 
-        // Structural \u2014 task granularity
-        document.getElementById('taskGranularity').addEventListener('change', e => {
-          vscode.postMessage({ type: 'update_preferences', preferences: { structural: { taskGranularity: e.target.value } } });
-        });
-
-        // Cognitive \u2014 checkboxes
-        ['focusMode', 'textToSpeech', 'breakReminders', 'simplifiedLanguage'].forEach(id => {
-          document.getElementById(id).addEventListener('change', e => {
-            vscode.postMessage({ type: 'update_preferences', preferences: { cognitive: { [id]: e.target.checked } } });
-          });
+          const btn = document.getElementById('apply-btn');
+          btn.textContent = 'Applied!';
+          btn.disabled = true;
+          setTimeout(() => { btn.textContent = 'Apply'; btn.disabled = false; }, 1500);
         });
       </script>
     `;
@@ -34671,7 +34185,7 @@ var PreferenceManager = class _PreferenceManager {
 };
 
 // src/features/assignments/AssignmentManager.ts
-var vscode3 = __toESM(require("vscode"));
+var vscode2 = __toESM(require("vscode"));
 var path2 = __toESM(require("path"));
 
 // src/features/assignments/parser.ts
@@ -35030,8 +34544,8 @@ var AssignmentManager = class _AssignmentManager {
    */
   async importFromFile(filePath) {
     try {
-      const uri = vscode3.Uri.file(filePath);
-      const content = await vscode3.workspace.fs.readFile(uri);
+      const uri = vscode2.Uri.file(filePath);
+      const content = await vscode2.workspace.fs.readFile(uri);
       const buffer = Buffer.from(content);
       Logger.log(`Importing PDF assignment: ${path2.basename(filePath)}`);
       const assignment = await parseAssignmentFile(buffer, filePath, this.apiKey);
@@ -35048,7 +34562,7 @@ var AssignmentManager = class _AssignmentManager {
    * Prompt user to select a PDF assignment file.
    */
   async promptImport() {
-    const uris = await vscode3.window.showOpenDialog({
+    const uris = await vscode2.window.showOpenDialog({
       canSelectFiles: true,
       canSelectMany: false,
       filters: { "PDF Assignments": ["pdf"] },
@@ -35059,14 +34573,14 @@ var AssignmentManager = class _AssignmentManager {
     }
     const filePath = uris[0].fsPath;
     if (!this.apiKey) {
-      const proceed = await vscode3.window.showWarningMessage(
+      const proceed = await vscode2.window.showWarningMessage(
         "PDF parsing works best with an Anthropic API key configured. Without it, basic heuristic parsing will be used (less accurate). Continue?",
         "Continue",
         "Configure API Key",
         "Cancel"
       );
       if (proceed === "Configure API Key") {
-        await vscode3.commands.executeCommand("workbench.action.openSettings", "neurocode.anthropicApiKey");
+        await vscode2.commands.executeCommand("workbench.action.openSettings", "neurocode.anthropicApiKey");
         return null;
       }
       if (proceed !== "Continue") {
@@ -37394,7 +36908,7 @@ var AdaptiveRenderer = class {
   /**
    * Render a full adaptive view of an assignment.
    */
-  render(assignment, preferences, adaptation) {
+  render(assignment, preferences, adaptation, requestType = "full_adaptation") {
     const strategy = buildStrategy(preferences);
     const cssVars = Object.entries(strategy.cssVariables).map(([k2, v2]) => `${k2}: ${v2};`).join("\n      ");
     const classes = strategy.containerClasses.join(" ");
@@ -37405,7 +36919,7 @@ var AdaptiveRenderer = class {
       return adapted ? this.renderAdaptedSection(adapted, section, strategy) : this.renderOriginalSection(section, strategy);
     }).join("\n");
     const supportHtml = adaptation?.supportMessage ? `<div class="nc-support-message">${this.escapeHtml(adaptation.supportMessage)}</div>` : "";
-    const actionsHtml = adaptation?.suggestedActions?.length ? `<div class="nc-actions">
+    const actionsHtml = requestType === "help_request" && adaptation?.suggestedActions?.length ? `<div class="nc-actions">
           ${adaptation.suggestedActions.map(
       (a2) => `<div class="nc-action nc-action-${a2.priority}">
                   <span class="nc-action-icon">${this.getActionIcon(a2.type)}</span>
@@ -37773,11 +37287,11 @@ var PROFILE_CSS = `
 `;
 
 // src/features/scaffold/ScaffoldEngine.ts
-var vscode5 = __toESM(require("vscode"));
+var vscode4 = __toESM(require("vscode"));
 var path3 = __toESM(require("path"));
 
 // src/features/scaffold/CommandExecutor.ts
-var vscode4 = __toESM(require("vscode"));
+var vscode3 = __toESM(require("vscode"));
 var CommandExecutor = class {
   terminal;
   /**
@@ -37785,6 +37299,11 @@ var CommandExecutor = class {
    * Returns stdout/stderr as a combined string.
    */
   async execute(command, cwd) {
+    const cdMatch = command.trim().match(/^cd\s+("?.+"?|'.+'|\S+)$/);
+    if (cdMatch) {
+      Logger.log(`[CommandExecutor] Skipping bare 'cd' command (use cwd parameter instead): ${command}`);
+      return { output: "", exitCode: 0 };
+    }
     const terminal = this.getOrCreateTerminal(cwd);
     if (terminal.shellIntegration) {
       return this.executeWithShellIntegration(terminal, command);
@@ -37798,8 +37317,14 @@ var CommandExecutor = class {
       outputChunks.push(chunk);
     }
     const exitCode = await new Promise((resolve2) => {
-      const disposable = vscode4.window.onDidEndTerminalShellExecution((e2) => {
+      const timer = setTimeout(() => {
+        disposable.dispose();
+        Logger.warn(`[CommandExecutor] Command timed out (120s): ${command}`);
+        resolve2(1);
+      }, 12e4);
+      const disposable = vscode3.window.onDidEndTerminalShellExecution((e2) => {
         if (e2.execution === execution) {
+          clearTimeout(timer);
           disposable.dispose();
           resolve2(e2.exitCode ?? 0);
         }
@@ -37820,16 +37345,16 @@ var CommandExecutor = class {
       }
       return this.terminal;
     }
-    this.terminal = vscode4.window.createTerminal({
+    this.terminal = vscode3.window.createTerminal({
       name: "NeuroCode Scaffold",
       cwd,
-      iconPath: new vscode4.ThemeIcon("rocket")
+      iconPath: new vscode3.ThemeIcon("rocket")
     });
     this.terminal.show(true);
     return this.terminal;
   }
   isTerminalClosed(terminal) {
-    return !vscode4.window.terminals.includes(terminal);
+    return !vscode3.window.terminals.includes(terminal);
   }
   dispose() {
     this.terminal?.dispose();
@@ -37840,7 +37365,7 @@ var CommandExecutor = class {
 // src/features/scaffold/ScaffoldToolBuilder.ts
 var EXECUTE_COMMAND_TOOL = {
   name: "execute_command",
-  description: "Run a shell command to scaffold the project (e.g. create-react-app, dotnet new, cargo init). Always prefer official project-creation CLIs. Keep commands non-interactive (use --yes / -y flags). Each command call must do one logical step only.",
+  description: "Run a shell command to scaffold the project (e.g. create-react-app, dotnet new, cargo init). Always prefer official project-creation CLIs. Keep commands non-interactive (use --yes / -y flags). Each command call must do one logical step only. NEVER use `cd` as a standalone command \u2014 use the `cwd` parameter instead to set the working directory.",
   input_schema: {
     type: "object",
     properties: {
@@ -37899,7 +37424,7 @@ var OPEN_IN_EDITOR_TOOL = {
 var LANGUAGE_HINTS = {
   typescript: "Use `npm create vite@latest -- --template vanilla-ts` or `npx create-react-app --template typescript`.",
   javascript: "Use `npm create vite@latest -- --template vanilla` or `npx create-react-app`.",
-  python: "Use `python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt` pattern.",
+  python: "Use `python3 -m venv .venv` on Linux/macOS or `python -m venv .venv` on Windows, then activate and pip install.",
   csharp: "Use `dotnet new <template>` (console / webapi / mvc / xunit etc.).",
   java: "Use `mvn archetype:generate -DinteractiveMode=false` or `gradle init --type java-application`.",
   rust: "Use `cargo init` or `cargo new <name>`.",
@@ -38007,7 +37532,12 @@ var ScaffoldEngine = class {
       systemHint,
       "",
       "Think step by step. Use tools one at a time. Do not explain yourself \u2014 just call tools.",
-      "When the project is ready, call open_in_editor on the main entry file, then stop."
+      "Rules for the agentic loop:",
+      "- NEVER use `cd` as a standalone command. Use the `cwd` parameter of execute_command instead.",
+      "- NEVER retry a command that already returned exit code 0 \u2014 treat it as done.",
+      "- 'Requirement already satisfied' means the package IS installed \u2014 do NOT install it again.",
+      "- Once the environment is set up (venv created, packages installed), IMMEDIATELY move on to creating source files with create_file.",
+      "- After creating all files, call open_in_editor on the main entry file, then stop."
     ].join("\n");
     const userMessage = buildScaffoldPrompt(request);
     const messages = [
@@ -38110,8 +37640,8 @@ ${description ?? ""}`
       return { toolUseId, success: false, output: "", error: "User rejected file creation." };
     }
     try {
-      const uri = vscode5.Uri.file(absolutePath);
-      await vscode5.workspace.fs.writeFile(uri, Buffer.from(content, "utf-8"));
+      const uri = vscode4.Uri.file(absolutePath);
+      await vscode4.workspace.fs.writeFile(uri, Buffer.from(content, "utf-8"));
       onProgress(`Created: ${relativePath}`, false);
       return { toolUseId, success: true, output: `File created: ${relativePath}` };
     } catch (err) {
@@ -38127,8 +37657,8 @@ ${description ?? ""}`
     const { path: relativePath } = input;
     const absolutePath = path3.resolve(workspaceRoot, relativePath);
     try {
-      const doc = await vscode5.workspace.openTextDocument(vscode5.Uri.file(absolutePath));
-      await vscode5.window.showTextDocument(doc, vscode5.ViewColumn.One);
+      const doc = await vscode4.workspace.openTextDocument(vscode4.Uri.file(absolutePath));
+      await vscode4.window.showTextDocument(doc, vscode4.ViewColumn.One);
       onProgress(`Opened: ${relativePath}`, false);
       return { toolUseId, success: true, output: `Opened ${relativePath} in editor.` };
     } catch (err) {
@@ -38142,7 +37672,7 @@ ${description ?? ""}`
   }
   // ─── Helpers ────────────────────────────────────────────────────────────────
   async requestApproval(title, detail) {
-    const answer = await vscode5.window.showInformationMessage(
+    const answer = await vscode4.window.showInformationMessage(
       `NeuroCode Scaffold: ${title}`,
       { modal: true, detail },
       "Allow",
@@ -38191,7 +37721,6 @@ function createInitialState() {
     isAdapting: false,
     isStreaming: false,
     lastAdaptationTimestamp: null,
-    lastStruggleCheckTimestamp: null,
     abandonedAdaptation: false
   };
 }
@@ -38201,9 +37730,6 @@ var NeurocodeController = class {
   adaptationEngine;
   preferenceManager;
   assignmentManager;
-  activityTracker;
-  struggleDetector;
-  sessionContext;
   renderer;
   scaffoldEngine;
   webview;
@@ -38214,23 +37740,18 @@ var NeurocodeController = class {
   // Cline uses cancelInProgress flag to prevent duplicate cancellations
   // from spam clicking. We use the same pattern for adaptation requests.
   adaptationInProgress = false;
-  // Track previous granularity to detect changes that require LLM re-adaptation
-  lastAdaptedGranularity = null;
   constructor(context, webview) {
     this.mcpManager = new McpManager();
     this.adaptationEngine = new AdaptationEngine();
     this.preferenceManager = new PreferenceManager(context);
     this.assignmentManager = new AssignmentManager(context);
-    this.activityTracker = new ActivityTracker();
-    this.struggleDetector = new StruggleDetector(this.activityTracker);
-    this.sessionContext = new SessionContextManager(this.activityTracker, this.struggleDetector);
     this.renderer = new AdaptiveRenderer();
     this.scaffoldEngine = new ScaffoldEngine();
     this.webview = webview;
     this.setupMcpCallbacks();
     this.setupPreferenceCallbacks();
     this.setupWebviewMessageRouter();
-    const config2 = vscode6.workspace.getConfiguration("neurocode");
+    const config2 = vscode5.workspace.getConfiguration("neurocode");
     const apiKey = config2.get("anthropicApiKey", "");
     if (apiKey) {
       this.adaptationEngine.setApiKey(apiKey);
@@ -38255,7 +37776,9 @@ var NeurocodeController = class {
     });
   }
   /**
-   * Re-render when preferences change.
+   * Re-render with cached adaptation when preferences change.
+   * Triggered by: profile switch (set_profile) or VS Code settings changes.
+   * Note: re-adaptation only happens on explicit Apply (apply_preferences handler).
    */
   setupPreferenceCallbacks() {
     this.preferenceManager.onPreferencesChanged(async (prefs) => {
@@ -38264,12 +37787,7 @@ var NeurocodeController = class {
       if (!assignment) {
         return;
       }
-      const granularityChanged = prefs.structural.taskGranularity !== this.lastAdaptedGranularity;
-      if (granularityChanged) {
-        await this.requestAdaptation("full_adaptation");
-      } else {
-        await this.renderAdaptiveView(assignment);
-      }
+      await this.renderAdaptiveView(assignment);
     });
   }
   /**
@@ -38293,12 +37811,15 @@ var NeurocodeController = class {
   // ─── Message Handlers ───────────────────────────────────────────
   async handleWebviewMessage(message) {
     switch (message.type) {
+      // No frontend trigger — reserved for webview lifecycle init (auto-sent on load)
       case "ready":
         this.postStateToWebview();
         break;
+      // No frontend trigger — reserved for manual state refresh (not wired to any button)
       case "request_state":
         this.postStateToWebview();
         break;
+      // Triggered by: "Open Assignment" button in WebviewManager dashboard
       case "open_assignment":
         if (message.filePath) {
           await this.loadAssignment(message.filePath);
@@ -38306,31 +37827,40 @@ var NeurocodeController = class {
           await this.promptAndLoadAssignment();
         }
         break;
+      // Triggered by: "Configure Preferences" button in WebviewManager dashboard
       case "open_preferences":
         this.showPreferencesPanel();
         break;
+      // Triggered by: Help button on each section in AdaptiveRenderer
       case "request_help":
-        this.struggleDetector.recordHelpSeeking(message.sectionId);
         await this.requestAdaptation("help_request", message.sectionId);
         break;
-      case "update_preferences":
+      // Triggered by: Apply button in PreferenceManager preferences panel
+      case "apply_preferences":
         this.preferenceManager.updatePreferences(message.preferences);
+        await this.requestAdaptation("full_adaptation");
         break;
+      // Triggered by: Profile dropdown in PreferenceManager preferences panel
       case "set_profile":
         this.preferenceManager.setProfile(message.profile);
         break;
+      // Triggered by: section scroll (IntersectionObserver) and checkbox in AdaptiveRenderer
+      // Currently no-op — placeholder for future progress tracking
       case "section_viewed":
-        this.sessionContext.setCurrentSection(message.sectionId);
         break;
+      // No corresponding frontend button — needs an Export button in the UI
       case "export_progress":
         await this.exportProgress();
         break;
+      // No corresponding frontend button — needs a Connect MCP input/button in the UI
       case "connect_mcp":
         await this.connectMcp(message.url);
         break;
+      // No corresponding frontend button — needs a Disconnect MCP button in the UI
       case "disconnect_mcp":
         await this.mcpManager.disconnect();
         break;
+      // No corresponding frontend button — needs a Scaffold button in the UI
       case "request_scaffold":
         await this.requestScaffold();
         break;
@@ -38347,25 +37877,24 @@ var NeurocodeController = class {
   async loadAssignment(filePath) {
     try {
       this.clearSession();
-      const assignment = await vscode6.window.withProgress(
+      const assignment = await vscode5.window.withProgress(
         {
-          location: vscode6.ProgressLocation.Notification,
+          location: vscode5.ProgressLocation.Notification,
           title: `NeuroCode: Loading ${filePath.split(/[/\\]/).pop()}...`,
           cancellable: false
         },
         () => this.assignmentManager.importFromFile(filePath)
       );
-      this.sessionContext.startSession(assignment.metadata.id);
       this.webview.postMessage({ type: "assignment_loaded", assignment });
       await this.renderAdaptiveView(assignment);
       this.postStateToWebview();
-      vscode6.window.showInformationMessage(
+      vscode5.window.showInformationMessage(
         `NeuroCode: Loaded "${assignment.metadata.title}" (${assignment.sections.length} sections)`
       );
     } catch (error2) {
       const msg = error2 instanceof Error ? error2.message : String(error2);
       Logger.error("Failed to load assignment:", error2);
-      vscode6.window.showErrorMessage(`NeuroCode: Failed to load \u2014 ${msg}`);
+      vscode5.window.showErrorMessage(`NeuroCode: Failed to load \u2014 ${msg}`);
       this.webview.sendError("load_failed", msg);
     }
   }
@@ -38376,9 +37905,9 @@ var NeurocodeController = class {
   async promptAndLoadAssignment() {
     let assignment;
     try {
-      assignment = await vscode6.window.withProgress(
+      assignment = await vscode5.window.withProgress(
         {
-          location: vscode6.ProgressLocation.Notification,
+          location: vscode5.ProgressLocation.Notification,
           title: "NeuroCode: Loading assignment...",
           cancellable: false
         },
@@ -38394,7 +37923,7 @@ var NeurocodeController = class {
     } catch (error2) {
       const msg = error2 instanceof Error ? error2.message : String(error2);
       Logger.error("Failed to load assignment:", error2);
-      vscode6.window.showErrorMessage(`NeuroCode: Failed to load assignment \u2014 ${msg}`);
+      vscode5.window.showErrorMessage(`NeuroCode: Failed to load assignment \u2014 ${msg}`);
       this.webview.sendError("load_failed", msg);
       return;
     }
@@ -38402,11 +37931,10 @@ var NeurocodeController = class {
       return;
     }
     this.clearSession();
-    this.sessionContext.startSession(assignment.metadata.id);
     this.webview.postMessage({ type: "assignment_loaded", assignment });
     await this.renderAdaptiveView(assignment);
     this.postStateToWebview();
-    vscode6.window.showInformationMessage(
+    vscode5.window.showInformationMessage(
       `NeuroCode: Loaded "${assignment.metadata.title}" (${assignment.sections.length} sections)`
     );
   }
@@ -38444,11 +37972,9 @@ var NeurocodeController = class {
     this.adaptationState.isAdapting = true;
     this.webview.postMessage({ type: "adaptation_progress", status: "started" });
     try {
-      const session = this.sessionContext.refreshContext();
       const request = {
         assignment,
         userPreferences: preferences,
-        sessionContext: session,
         requestType,
         targetSectionId
       };
@@ -38456,13 +37982,12 @@ var NeurocodeController = class {
       this.currentAdaptation = await this.adaptationEngine.generateAdaptation(request);
       this.adaptationState.isStreaming = false;
       this.adaptationState.lastAdaptationTimestamp = Date.now();
-      this.lastAdaptedGranularity = preferences.structural.taskGranularity;
       this.webview.postMessage({
         type: "adaptation_result",
         adaptation: this.currentAdaptation
       });
       this.webview.postMessage({ type: "adaptation_progress", status: "complete" });
-      await this.renderAdaptiveView(assignment, this.currentAdaptation);
+      await this.renderAdaptiveView(assignment, this.currentAdaptation, requestType);
     } catch (error2) {
       Logger.error("Adaptation failed:", error2);
       this.adaptationState.isStreaming = false;
@@ -38481,9 +38006,9 @@ var NeurocodeController = class {
   /**
    * Render the adaptive view in the webview panel.
    */
-  async renderAdaptiveView(assignment, adaptation) {
+  async renderAdaptiveView(assignment, adaptation, requestType = "full_adaptation") {
     const preferences = this.preferenceManager.getPreferences();
-    const html2 = this.renderer.render(assignment, preferences, adaptation ?? this.currentAdaptation ?? void 0);
+    const html2 = this.renderer.render(assignment, preferences, adaptation ?? this.currentAdaptation ?? void 0, requestType);
     this.webview.setHtmlContent(html2);
   }
   /**
@@ -38510,12 +38035,12 @@ var NeurocodeController = class {
   async exportProgress() {
     try {
       const report = await this.assignmentManager.exportProgress();
-      const uri = await vscode6.window.showSaveDialog({
-        defaultUri: vscode6.Uri.file("progress-report.json"),
+      const uri = await vscode5.window.showSaveDialog({
+        defaultUri: vscode5.Uri.file("progress-report.json"),
         filters: { "JSON Files": ["json"] }
       });
       if (uri) {
-        await vscode6.workspace.fs.writeFile(uri, Buffer.from(report, "utf-8"));
+        await vscode5.workspace.fs.writeFile(uri, Buffer.from(report, "utf-8"));
         this.webview.sendInfo("Progress exported successfully");
       }
     } catch (error2) {
@@ -38529,24 +38054,24 @@ var NeurocodeController = class {
   async requestScaffold() {
     const assignment = this.assignmentManager.getCurrentAssignment();
     if (!assignment) {
-      vscode6.window.showErrorMessage("NeuroCode: Load an assignment before scaffolding.");
+      vscode5.window.showErrorMessage("NeuroCode: Load an assignment before scaffolding.");
       return;
     }
     if (!this.scaffoldEngine.isAvailable) {
-      vscode6.window.showErrorMessage(
+      vscode5.window.showErrorMessage(
         "NeuroCode: Set neurocode.anthropicApiKey in settings to use scaffolding."
       );
       return;
     }
-    const workspaceFolders = vscode6.workspace.workspaceFolders;
+    const workspaceFolders = vscode5.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
-      vscode6.window.showErrorMessage("NeuroCode: Open a workspace folder before scaffolding.");
+      vscode5.window.showErrorMessage("NeuroCode: Open a workspace folder before scaffolding.");
       return;
     }
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
-    await vscode6.window.withProgress(
+    await vscode5.window.withProgress(
       {
-        location: vscode6.ProgressLocation.Notification,
+        location: vscode5.ProgressLocation.Notification,
         title: `NeuroCode: Scaffolding "${assignment.metadata.title}"...`,
         cancellable: false
       },
@@ -38562,13 +38087,13 @@ var NeurocodeController = class {
               });
             }
           );
-          vscode6.window.showInformationMessage(
+          vscode5.window.showInformationMessage(
             `NeuroCode: Project scaffold complete for "${assignment.metadata.title}"`
           );
         } catch (error2) {
           const msg = error2 instanceof Error ? error2.message : String(error2);
           Logger.error("Scaffold failed:", error2);
-          vscode6.window.showErrorMessage(`NeuroCode: Scaffold failed \u2014 ${msg}`);
+          vscode5.window.showErrorMessage(`NeuroCode: Scaffold failed \u2014 ${msg}`);
         }
       }
     );
@@ -38587,7 +38112,6 @@ var NeurocodeController = class {
       currentAssignment: this.assignmentManager.getCurrentAssignment(),
       currentAdaptation: this.currentAdaptation,
       userPreferences: this.preferenceManager.getPreferences(),
-      sessionContext: this.sessionContext.getSession(),
       mcpServer: this.mcpManager.getServerInfo(),
       version: "0.1.0"
     });
@@ -38607,8 +38131,6 @@ var NeurocodeController = class {
     }
     this.currentAdaptation = null;
     this.adaptationState = createInitialState();
-    this.activityTracker.reset();
-    this.struggleDetector.reset();
     Logger.log("Session cleared");
   }
   // ─── Public API for Commands ────────────────────────────────────
@@ -38616,16 +38138,16 @@ var NeurocodeController = class {
    * Show the preferences configuration panel.
    */
   showPreferencesPanel() {
-    const panel = vscode6.window.createWebviewPanel(
+    const panel = vscode5.window.createWebviewPanel(
       "neurocodePreferences",
       "NeuroCode Preferences",
-      vscode6.ViewColumn.One,
+      vscode5.ViewColumn.One,
       { enableScripts: true }
     );
     panel.webview.html = this.wrapPreferencesHtml(
       this.preferenceManager.generatePreferencesHtml()
     );
-    panel.webview.onDidReceiveMessage((message) => {
+    panel.webview.onDidReceiveMessage(async (message) => {
       switch (message.type) {
         case "set_profile":
           this.preferenceManager.setProfile(message.profile);
@@ -38633,8 +38155,9 @@ var NeurocodeController = class {
             this.preferenceManager.generatePreferencesHtml()
           );
           break;
-        case "update_preferences":
+        case "apply_preferences":
           this.preferenceManager.updatePreferences(message.preferences);
+          await this.requestAdaptation("full_adaptation");
           break;
       }
     });
@@ -38672,8 +38195,6 @@ var NeurocodeController = class {
    */
   dispose() {
     this.clearSession();
-    this.activityTracker.dispose();
-    this.struggleDetector.dispose();
     this.mcpManager.dispose();
     this.adaptationEngine.dispose();
     this.preferenceManager.dispose();
@@ -38687,13 +38208,13 @@ var NeurocodeController = class {
 var controller;
 async function activate(context) {
   const startTime = performance.now();
-  const outputChannel2 = vscode7.window.createOutputChannel("NeuroCode Adapter");
+  const outputChannel2 = vscode6.window.createOutputChannel("NeuroCode Adapter");
   Logger.initialize(outputChannel2);
   context.subscriptions.push(outputChannel2);
   Logger.log("NeuroCode Adapter activating...");
   const webviewManager = new WebviewManager(context.extensionUri);
   context.subscriptions.push(
-    vscode7.window.registerWebviewViewProvider(
+    vscode6.window.registerWebviewViewProvider(
       WebviewManager.VIEW_ID,
       webviewManager,
       { webviewOptions: { retainContextWhenHidden: true } }
@@ -38703,9 +38224,9 @@ async function activate(context) {
   context.subscriptions.push(controller);
   registerCommands(context, controller);
   context.subscriptions.push(
-    vscode7.workspace.onDidChangeConfiguration((e2) => {
+    vscode6.workspace.onDidChangeConfiguration((e2) => {
       if (e2.affectsConfiguration("neurocode.anthropicApiKey")) {
-        const config2 = vscode7.workspace.getConfiguration("neurocode");
+        const config2 = vscode6.workspace.getConfiguration("neurocode");
         const apiKey = config2.get("anthropicApiKey", "");
         controller?.adaptationEngine.setApiKey(apiKey);
         controller?.assignmentManager.setApiKey(apiKey);
@@ -38726,16 +38247,16 @@ function registerCommands(context, ctrl) {
     ["neurocode.exportProgress", async () => {
       try {
         const report = await ctrl.assignmentManager.exportProgress();
-        const uri = await vscode7.window.showSaveDialog({
-          defaultUri: vscode7.Uri.file("neurocode-progress.json"),
+        const uri = await vscode6.window.showSaveDialog({
+          defaultUri: vscode6.Uri.file("neurocode-progress.json"),
           filters: { "JSON Files": ["json"] }
         });
         if (uri) {
-          await vscode7.workspace.fs.writeFile(uri, Buffer.from(report, "utf-8"));
-          vscode7.window.showInformationMessage("Progress exported successfully");
+          await vscode6.workspace.fs.writeFile(uri, Buffer.from(report, "utf-8"));
+          vscode6.window.showInformationMessage("Progress exported successfully");
         }
       } catch (error2) {
-        vscode7.window.showErrorMessage(
+        vscode6.window.showErrorMessage(
           `Export failed: ${error2 instanceof Error ? error2.message : String(error2)}`
         );
       }
@@ -38743,7 +38264,7 @@ function registerCommands(context, ctrl) {
   ];
   for (const [id, handler] of commands3) {
     context.subscriptions.push(
-      vscode7.commands.registerCommand(id, handler)
+      vscode6.commands.registerCommand(id, handler)
     );
   }
   Logger.log(`Registered ${commands3.length} commands`);

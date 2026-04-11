@@ -18,6 +18,15 @@ export class CommandExecutor implements vscode.Disposable {
    * Returns stdout/stderr as a combined string.
    */
   async execute(command: string, cwd?: string): Promise<{ output: string; exitCode: number }> {
+    // `cd` is a shell builtin with no output — shell integration's read() stream never
+    // terminates for it, causing a hang until the 120 s timeout. Callers should use the
+    // `cwd` parameter instead; intercept here as a safety net.
+    const cdMatch = command.trim().match(/^cd\s+("?.+"?|'.+'|\S+)$/);
+    if (cdMatch) {
+      Logger.log(`[CommandExecutor] Skipping bare 'cd' command (use cwd parameter instead): ${command}`);
+      return { output: "", exitCode: 0 };
+    }
+
     const terminal = this.getOrCreateTerminal(cwd);
 
     // Use shell integration API (VS Code 1.93+) if available for exit code capture.
@@ -42,9 +51,17 @@ export class CommandExecutor implements vscode.Disposable {
     }
 
     // Exit code arrives via the onDidEndTerminalShellExecution event
+    // Timeout after 120s to avoid blocking the agentic loop indefinitely
     const exitCode = await new Promise<number>((resolve) => {
+      const timer = setTimeout(() => {
+        disposable.dispose();
+        Logger.warn(`[CommandExecutor] Command timed out (120s): ${command}`);
+        resolve(1); // treat timeout as failure so Claude can recover
+      }, 120_000);
+
       const disposable = vscode.window.onDidEndTerminalShellExecution((e) => {
         if (e.execution === execution) {
+          clearTimeout(timer);
           disposable.dispose();
           resolve(e.exitCode ?? 0);
         }

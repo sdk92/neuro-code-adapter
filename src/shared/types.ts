@@ -99,23 +99,11 @@ export interface Assignment {
   adaptationHints?: Record<NeurodiversityType, string>;
 }
 
-// ─── Context & Tracking Types ───────────────────────────────────────────────
-
-export interface SessionContext {
-  sessionId: string;
-  startedAt: number;
-  assignmentId?: string;
-  activeFile?: string;
-  currentSection?: string;
-  timeOnTask: number;
-}
-
 // ─── Adaptation Types ───────────────────────────────────────────────────────
 
 export interface AdaptationRequest {
   assignment: Assignment;
   userPreferences: UserPreferences;
-  sessionContext: SessionContext;
   requestType: "full_adaptation" | "help_request";
   targetSectionId?: string;
 }

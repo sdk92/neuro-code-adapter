@@ -23,12 +23,10 @@
  *   - AdaptationEngine (LLM interaction)
  *   - PreferenceManager (user preferences)
  *   - AssignmentManager (assignment lifecycle)
- *   - SessionContextManager (context aggregation)
  *   - AdaptiveRenderer (view generation)
  *   - WebviewManager (UI communication)
  */
 import * as vscode from "vscode";
-import { SessionContextManager } from "@core/context/SessionContext";
 import { WebviewManager } from "@core/webview/WebviewManager";
 import { McpManager } from "@services/mcp/McpManager";
 import { AdaptationEngine } from "@services/llm/AdaptationEngine";
@@ -47,7 +45,6 @@ interface AdaptationState {
   isAdapting: boolean;           // Whether an LLM adaptation is in progress
   isStreaming: boolean;          // Whether we're receiving streaming response
   lastAdaptationTimestamp: number | null;
-  lastStruggleCheckTimestamp: number | null;
   abandonedAdaptation: boolean;  // Mirrors Cline's Task.taskState.abandoned
 }
 
@@ -56,7 +53,6 @@ function createInitialState(): AdaptationState {
     isAdapting: false,
     isStreaming: false,
     lastAdaptationTimestamp: null,
-    lastStruggleCheckTimestamp: null,
     abandonedAdaptation: false,
   };
 }
@@ -67,7 +63,6 @@ export class NeurocodeController implements vscode.Disposable {
   readonly adaptationEngine: AdaptationEngine;
   readonly preferenceManager: PreferenceManager;
   readonly assignmentManager: AssignmentManager;
-  readonly sessionContext: SessionContextManager;
   readonly renderer: AdaptiveRenderer;
   readonly scaffoldEngine: ScaffoldEngine;
   readonly webview: WebviewManager;
@@ -81,8 +76,6 @@ export class NeurocodeController implements vscode.Disposable {
   // from spam clicking. We use the same pattern for adaptation requests.
   private adaptationInProgress = false;
 
-  // Track previous granularity to detect changes that require LLM re-adaptation
-  private lastAdaptedGranularity: string | null = null;
 
   constructor(
     context: vscode.ExtensionContext,
@@ -93,7 +86,6 @@ export class NeurocodeController implements vscode.Disposable {
     this.adaptationEngine = new AdaptationEngine();
     this.preferenceManager = new PreferenceManager(context);
     this.assignmentManager = new AssignmentManager(context);
-    this.sessionContext = new SessionContextManager();
     this.renderer = new AdaptiveRenderer();
     this.scaffoldEngine = new ScaffoldEngine();
     this.webview = webview;
@@ -135,25 +127,18 @@ export class NeurocodeController implements vscode.Disposable {
   }
 
   /**
-   * Re-render when preferences change.
+   * Re-render with cached adaptation when preferences change.
+   * Triggered by: profile switch (set_profile) or VS Code settings changes.
+   * Note: re-adaptation only happens on explicit Apply (apply_preferences handler).
    */
   private setupPreferenceCallbacks(): void {
     this.preferenceManager.onPreferencesChanged(async (prefs) => {
       this.webview.postMessage({ type: "preferences_updated", preferences: prefs });
 
+      // Re-render with cached adaptation — re-adaptation only happens on explicit Apply
       const assignment = this.assignmentManager.getCurrentAssignment();
       if (!assignment) { return; }
-
-      const granularityChanged =
-        prefs.structural.taskGranularity !== this.lastAdaptedGranularity;
-
-      if (granularityChanged) {
-        // taskGranularity affects LLM output — re-adapt with new granularity
-        await this.requestAdaptation("full_adaptation");
-      } else {
-        // Visual/structural CSS changes — re-render with cached adaptation
-        await this.renderAdaptiveView(assignment);
-      }
+      await this.renderAdaptiveView(assignment);
     });
   }
 
@@ -181,14 +166,17 @@ export class NeurocodeController implements vscode.Disposable {
 
   private async handleWebviewMessage(message: WebviewMessage): Promise<void> {
     switch (message.type) {
+      // No frontend trigger — reserved for webview lifecycle init (auto-sent on load)
       case "ready":
         this.postStateToWebview();
         break;
 
+      // No frontend trigger — reserved for manual state refresh (not wired to any button)
       case "request_state":
         this.postStateToWebview();
         break;
 
+      // Triggered by: "Open Assignment" button in WebviewManager dashboard
       case "open_assignment":
         if (message.filePath) {
           await this.loadAssignment(message.filePath);
@@ -197,38 +185,48 @@ export class NeurocodeController implements vscode.Disposable {
         }
         break;
 
+      // Triggered by: "Configure Preferences" button in WebviewManager dashboard
       case "open_preferences":
         this.showPreferencesPanel();
         break;
 
+      // Triggered by: Help button on each section in AdaptiveRenderer
       case "request_help":
         await this.requestAdaptation("help_request", message.sectionId);
         break;
 
-      case "update_preferences":
+      // Triggered by: Apply button in PreferenceManager preferences panel
+      case "apply_preferences":
         this.preferenceManager.updatePreferences(message.preferences);
+        await this.requestAdaptation("full_adaptation");
         break;
 
+      // Triggered by: Profile dropdown in PreferenceManager preferences panel
       case "set_profile":
         this.preferenceManager.setProfile(message.profile);
         break;
 
+      // Triggered by: section scroll (IntersectionObserver) and checkbox in AdaptiveRenderer
+      // Currently no-op — placeholder for future progress tracking
       case "section_viewed":
-        this.sessionContext.setCurrentSection(message.sectionId);
         break;
 
+      // No corresponding frontend button — needs an Export button in the UI
       case "export_progress":
         await this.exportProgress();
         break;
 
+      // No corresponding frontend button — needs a Connect MCP input/button in the UI
       case "connect_mcp":
         await this.connectMcp(message.url);
         break;
 
+      // No corresponding frontend button — needs a Disconnect MCP button in the UI
       case "disconnect_mcp":
         await this.mcpManager.disconnect();
         break;
 
+      // No corresponding frontend button — needs a Scaffold button in the UI
       case "request_scaffold":
         await this.requestScaffold();
         break;
@@ -257,7 +255,6 @@ export class NeurocodeController implements vscode.Disposable {
         () => this.assignmentManager.importFromFile(filePath)
       );
 
-      this.sessionContext.startSession(assignment.metadata.id);
       this.webview.postMessage({ type: "assignment_loaded", assignment });
       await this.renderAdaptiveView(assignment);
       this.postStateToWebview();
@@ -311,7 +308,6 @@ export class NeurocodeController implements vscode.Disposable {
     }
 
     this.clearSession();
-    this.sessionContext.startSession(assignment.metadata.id);
     this.webview.postMessage({ type: "assignment_loaded", assignment });
     await this.renderAdaptiveView(assignment);
     this.postStateToWebview();
@@ -363,12 +359,9 @@ export class NeurocodeController implements vscode.Disposable {
     this.webview.postMessage({ type: "adaptation_progress", status: "started" });
 
     try {
-      const session = this.sessionContext.refreshContext();
-
       const request: AdaptationRequest = {
         assignment,
         userPreferences: preferences,
-        sessionContext: session,
         requestType,
         targetSectionId,
       };
@@ -377,7 +370,6 @@ export class NeurocodeController implements vscode.Disposable {
       this.currentAdaptation = await this.adaptationEngine.generateAdaptation(request);
       this.adaptationState.isStreaming = false;
       this.adaptationState.lastAdaptationTimestamp = Date.now();
-      this.lastAdaptedGranularity = preferences.structural.taskGranularity;
 
       this.webview.postMessage({
         type: "adaptation_result",
@@ -385,7 +377,7 @@ export class NeurocodeController implements vscode.Disposable {
       });
       this.webview.postMessage({ type: "adaptation_progress", status: "complete" });
 
-      await this.renderAdaptiveView(assignment, this.currentAdaptation);
+      await this.renderAdaptiveView(assignment, this.currentAdaptation, requestType);
 
     } catch (error) {
       Logger.error("Adaptation failed:", error);
@@ -413,10 +405,11 @@ export class NeurocodeController implements vscode.Disposable {
    */
   private async renderAdaptiveView(
     assignment: Assignment,
-    adaptation?: AdaptationResponse
+    adaptation?: AdaptationResponse,
+    requestType: "full_adaptation" | "help_request" = "full_adaptation"
   ): Promise<void> {
     const preferences = this.preferenceManager.getPreferences();
-    const html = this.renderer.render(assignment, preferences, adaptation ?? this.currentAdaptation ?? undefined);
+    const html = this.renderer.render(assignment, preferences, adaptation ?? this.currentAdaptation ?? undefined, requestType);
     this.webview.setHtmlContent(html);
   }
 
@@ -530,7 +523,6 @@ export class NeurocodeController implements vscode.Disposable {
       currentAssignment: this.assignmentManager.getCurrentAssignment(),
       currentAdaptation: this.currentAdaptation,
       userPreferences: this.preferenceManager.getPreferences(),
-      sessionContext: this.sessionContext.getSession(),
       mcpServer: this.mcpManager.getServerInfo(),
       version: "0.1.0",
     });
@@ -571,7 +563,7 @@ export class NeurocodeController implements vscode.Disposable {
     );
 
     // Handle messages from the preferences panel webview
-    panel.webview.onDidReceiveMessage((message: WebviewMessage) => {
+    panel.webview.onDidReceiveMessage(async (message: WebviewMessage) => {
       switch (message.type) {
         case "set_profile":
           this.preferenceManager.setProfile(message.profile);
@@ -580,8 +572,9 @@ export class NeurocodeController implements vscode.Disposable {
             this.preferenceManager.generatePreferencesHtml()
           );
           break;
-        case "update_preferences":
+        case "apply_preferences":
           this.preferenceManager.updatePreferences(message.preferences);
+          await this.requestAdaptation("full_adaptation");
           break;
       }
     });
