@@ -2984,7 +2984,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve2.call(this, root, ref);
+      let _sch = resolve3.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a3 = root.localRefs) === null || _a3 === void 0 ? void 0 : _a3[ref];
         const { schemaId } = this.opts;
@@ -3011,7 +3011,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve2(root, ref) {
+    function resolve3(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3226,8 +3226,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path4) {
-      let input = path4;
+    function removeDotSegments(path5) {
+      let input = path5;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3426,8 +3426,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path4, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path4 && path4 !== "/" ? path4 : void 0;
+        const [path5, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path5 && path5 !== "/" ? path5 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -3586,7 +3586,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve2(baseURI, relativeURI, options2) {
+    function resolve3(baseURI, relativeURI, options2) {
       const schemelessOptions = options2 ? Object.assign({ scheme: "null" }, options2) : { scheme: "null" };
       const resolved = resolveComponent(parse3(baseURI, schemelessOptions), parse3(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
@@ -3813,7 +3813,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve2,
+      resolve: resolve3,
       resolveComponent,
       equal,
       serialize,
@@ -6808,7 +6808,7 @@ var require_windows = __commonJS({
     module2.exports = isexe;
     isexe.sync = sync;
     var fs2 = require("fs");
-    function checkPathExt(path4, options2) {
+    function checkPathExt(path5, options2) {
       var pathext = options2.pathExt !== void 0 ? options2.pathExt : process.env.PATHEXT;
       if (!pathext) {
         return true;
@@ -6819,25 +6819,25 @@ var require_windows = __commonJS({
       }
       for (var i2 = 0; i2 < pathext.length; i2++) {
         var p2 = pathext[i2].toLowerCase();
-        if (p2 && path4.substr(-p2.length).toLowerCase() === p2) {
+        if (p2 && path5.substr(-p2.length).toLowerCase() === p2) {
           return true;
         }
       }
       return false;
     }
-    function checkStat(stat, path4, options2) {
+    function checkStat(stat, path5, options2) {
       if (!stat.isSymbolicLink() && !stat.isFile()) {
         return false;
       }
-      return checkPathExt(path4, options2);
+      return checkPathExt(path5, options2);
     }
-    function isexe(path4, options2, cb) {
-      fs2.stat(path4, function(er2, stat) {
-        cb(er2, er2 ? false : checkStat(stat, path4, options2));
+    function isexe(path5, options2, cb) {
+      fs2.stat(path5, function(er2, stat) {
+        cb(er2, er2 ? false : checkStat(stat, path5, options2));
       });
     }
-    function sync(path4, options2) {
-      return checkStat(fs2.statSync(path4), path4, options2);
+    function sync(path5, options2) {
+      return checkStat(fs2.statSync(path5), path5, options2);
     }
   }
 });
@@ -6848,13 +6848,13 @@ var require_mode = __commonJS({
     module2.exports = isexe;
     isexe.sync = sync;
     var fs2 = require("fs");
-    function isexe(path4, options2, cb) {
-      fs2.stat(path4, function(er2, stat) {
+    function isexe(path5, options2, cb) {
+      fs2.stat(path5, function(er2, stat) {
         cb(er2, er2 ? false : checkStat(stat, options2));
       });
     }
-    function sync(path4, options2) {
-      return checkStat(fs2.statSync(path4), options2);
+    function sync(path5, options2) {
+      return checkStat(fs2.statSync(path5), options2);
     }
     function checkStat(stat, options2) {
       return stat.isFile() && checkMode(stat, options2);
@@ -6887,7 +6887,7 @@ var require_isexe = __commonJS({
     }
     module2.exports = isexe;
     isexe.sync = sync;
-    function isexe(path4, options2, cb) {
+    function isexe(path5, options2, cb) {
       if (typeof options2 === "function") {
         cb = options2;
         options2 = {};
@@ -6896,17 +6896,17 @@ var require_isexe = __commonJS({
         if (typeof Promise !== "function") {
           throw new TypeError("callback not provided");
         }
-        return new Promise(function(resolve2, reject) {
-          isexe(path4, options2 || {}, function(er2, is) {
+        return new Promise(function(resolve3, reject) {
+          isexe(path5, options2 || {}, function(er2, is) {
             if (er2) {
               reject(er2);
             } else {
-              resolve2(is);
+              resolve3(is);
             }
           });
         });
       }
-      core(path4, options2 || {}, function(er2, is) {
+      core(path5, options2 || {}, function(er2, is) {
         if (er2) {
           if (er2.code === "EACCES" || options2 && options2.ignoreErrors) {
             er2 = null;
@@ -6916,9 +6916,9 @@ var require_isexe = __commonJS({
         cb(er2, is);
       });
     }
-    function sync(path4, options2) {
+    function sync(path5, options2) {
       try {
-        return core.sync(path4, options2 || {});
+        return core.sync(path5, options2 || {});
       } catch (er2) {
         if (options2 && options2.ignoreErrors || er2.code === "EACCES") {
           return false;
@@ -6934,7 +6934,7 @@ var require_isexe = __commonJS({
 var require_which = __commonJS({
   "node_modules/which/which.js"(exports2, module2) {
     var isWindows = process.platform === "win32" || process.env.OSTYPE === "cygwin" || process.env.OSTYPE === "msys";
-    var path4 = require("path");
+    var path5 = require("path");
     var COLON = isWindows ? ";" : ":";
     var isexe = require_isexe();
     var getNotFoundError = (cmd) => Object.assign(new Error(`not found: ${cmd}`), { code: "ENOENT" });
@@ -6967,27 +6967,27 @@ var require_which = __commonJS({
         opt = {};
       const { pathEnv, pathExt, pathExtExe } = getPathInfo(cmd, opt);
       const found = [];
-      const step = (i2) => new Promise((resolve2, reject) => {
+      const step = (i2) => new Promise((resolve3, reject) => {
         if (i2 === pathEnv.length)
-          return opt.all && found.length ? resolve2(found) : reject(getNotFoundError(cmd));
+          return opt.all && found.length ? resolve3(found) : reject(getNotFoundError(cmd));
         const ppRaw = pathEnv[i2];
         const pathPart = /^".*"$/.test(ppRaw) ? ppRaw.slice(1, -1) : ppRaw;
-        const pCmd = path4.join(pathPart, cmd);
+        const pCmd = path5.join(pathPart, cmd);
         const p2 = !pathPart && /^\.[\\\/]/.test(cmd) ? cmd.slice(0, 2) + pCmd : pCmd;
-        resolve2(subStep(p2, i2, 0));
+        resolve3(subStep(p2, i2, 0));
       });
-      const subStep = (p2, i2, ii) => new Promise((resolve2, reject) => {
+      const subStep = (p2, i2, ii) => new Promise((resolve3, reject) => {
         if (ii === pathExt.length)
-          return resolve2(step(i2 + 1));
+          return resolve3(step(i2 + 1));
         const ext = pathExt[ii];
         isexe(p2 + ext, { pathExt: pathExtExe }, (er2, is) => {
           if (!er2 && is) {
             if (opt.all)
               found.push(p2 + ext);
             else
-              return resolve2(p2 + ext);
+              return resolve3(p2 + ext);
           }
-          return resolve2(subStep(p2, i2, ii + 1));
+          return resolve3(subStep(p2, i2, ii + 1));
         });
       });
       return cb ? step(0).then((res) => cb(null, res), cb) : step(0);
@@ -6999,7 +6999,7 @@ var require_which = __commonJS({
       for (let i2 = 0; i2 < pathEnv.length; i2++) {
         const ppRaw = pathEnv[i2];
         const pathPart = /^".*"$/.test(ppRaw) ? ppRaw.slice(1, -1) : ppRaw;
-        const pCmd = path4.join(pathPart, cmd);
+        const pCmd = path5.join(pathPart, cmd);
         const p2 = !pathPart && /^\.[\\\/]/.test(cmd) ? cmd.slice(0, 2) + pCmd : pCmd;
         for (let j2 = 0; j2 < pathExt.length; j2++) {
           const cur = p2 + pathExt[j2];
@@ -7047,7 +7047,7 @@ var require_path_key = __commonJS({
 var require_resolveCommand = __commonJS({
   "node_modules/cross-spawn/lib/util/resolveCommand.js"(exports2, module2) {
     "use strict";
-    var path4 = require("path");
+    var path5 = require("path");
     var which = require_which();
     var getPathKey = require_path_key();
     function resolveCommandAttempt(parsed, withoutPathExt) {
@@ -7065,7 +7065,7 @@ var require_resolveCommand = __commonJS({
       try {
         resolved = which.sync(parsed.command, {
           path: env[getPathKey({ env })],
-          pathExt: withoutPathExt ? path4.delimiter : void 0
+          pathExt: withoutPathExt ? path5.delimiter : void 0
         });
       } catch (e2) {
       } finally {
@@ -7074,7 +7074,7 @@ var require_resolveCommand = __commonJS({
         }
       }
       if (resolved) {
-        resolved = path4.resolve(hasCustomCwd ? parsed.options.cwd : "", resolved);
+        resolved = path5.resolve(hasCustomCwd ? parsed.options.cwd : "", resolved);
       }
       return resolved;
     }
@@ -7128,8 +7128,8 @@ var require_shebang_command = __commonJS({
       if (!match) {
         return null;
       }
-      const [path4, argument] = match[0].replace(/#! ?/, "").split(" ");
-      const binary = path4.split("/").pop();
+      const [path5, argument] = match[0].replace(/#! ?/, "").split(" ");
+      const binary = path5.split("/").pop();
       if (binary === "env") {
         return argument;
       }
@@ -7164,7 +7164,7 @@ var require_readShebang = __commonJS({
 var require_parse = __commonJS({
   "node_modules/cross-spawn/lib/parse.js"(exports2, module2) {
     "use strict";
-    var path4 = require("path");
+    var path5 = require("path");
     var resolveCommand = require_resolveCommand();
     var escape3 = require_escape();
     var readShebang = require_readShebang();
@@ -7189,7 +7189,7 @@ var require_parse = __commonJS({
       const needsShell = !isExecutableRegExp.test(commandFile);
       if (parsed.options.forceShell || needsShell) {
         const needsDoubleEscapeMetaChars = isCmdShimRegExp.test(commandFile);
-        parsed.command = path4.normalize(parsed.command);
+        parsed.command = path5.normalize(parsed.command);
         parsed.command = escape3.command(parsed.command);
         parsed.args = parsed.args.map((arg) => escape3.argument(arg, needsDoubleEscapeMetaChars));
         const shellCommand = [parsed.command].concat(parsed.args).join(" ");
@@ -8031,14 +8031,14 @@ var require_url_state_machine = __commonJS({
       return url2.replace(/\u0009|\u000A|\u000D/g, "");
     }
     function shortenPath(url2) {
-      const path4 = url2.path;
-      if (path4.length === 0) {
+      const path5 = url2.path;
+      if (path5.length === 0) {
         return;
       }
-      if (url2.scheme === "file" && path4.length === 1 && isNormalizedWindowsDriveLetter(path4[0])) {
+      if (url2.scheme === "file" && path5.length === 1 && isNormalizedWindowsDriveLetter(path5[0])) {
         return;
       }
-      path4.pop();
+      path5.pop();
     }
     function includesCredentials(url2) {
       return url2.username !== "" || url2.password !== "";
@@ -9358,7 +9358,7 @@ var require_lib2 = __commonJS({
       let accum = [];
       let accumBytes = 0;
       let abort = false;
-      return new Body.Promise(function(resolve2, reject) {
+      return new Body.Promise(function(resolve3, reject) {
         let resTimeout;
         if (_this4.timeout) {
           resTimeout = setTimeout(function() {
@@ -9392,7 +9392,7 @@ var require_lib2 = __commonJS({
           }
           clearTimeout(resTimeout);
           try {
-            resolve2(Buffer.concat(accum, accumBytes));
+            resolve3(Buffer.concat(accum, accumBytes));
           } catch (err) {
             reject(new FetchError(`Could not create Buffer from response body for ${_this4.url}: ${err.message}`, "system", err));
           }
@@ -10067,7 +10067,7 @@ var require_lib2 = __commonJS({
         throw new Error("native promise missing, set fetch.Promise to your favorite alternative");
       }
       Body.Promise = fetch3.Promise;
-      return new fetch3.Promise(function(resolve2, reject) {
+      return new fetch3.Promise(function(resolve3, reject) {
         const request = new Request3(url2, opts);
         const options2 = getNodeRequestOptions(request);
         const send = (options2.protocol === "https:" ? https : http).request;
@@ -10200,7 +10200,7 @@ var require_lib2 = __commonJS({
                   requestOpts.body = void 0;
                   requestOpts.headers.delete("content-length");
                 }
-                resolve2(fetch3(new Request3(locationURL, requestOpts)));
+                resolve3(fetch3(new Request3(locationURL, requestOpts)));
                 finalize2();
                 return;
             }
@@ -10221,7 +10221,7 @@ var require_lib2 = __commonJS({
           const codings = headers.get("Content-Encoding");
           if (!request.compress || request.method === "HEAD" || codings === null || res.statusCode === 204 || res.statusCode === 304) {
             response = new Response4(body, response_options);
-            resolve2(response);
+            resolve3(response);
             return;
           }
           const zlibOptions = {
@@ -10231,7 +10231,7 @@ var require_lib2 = __commonJS({
           if (codings == "gzip" || codings == "x-gzip") {
             body = body.pipe(zlib.createGunzip(zlibOptions));
             response = new Response4(body, response_options);
-            resolve2(response);
+            resolve3(response);
             return;
           }
           if (codings == "deflate" || codings == "x-deflate") {
@@ -10243,12 +10243,12 @@ var require_lib2 = __commonJS({
                 body = body.pipe(zlib.createInflateRaw());
               }
               response = new Response4(body, response_options);
-              resolve2(response);
+              resolve3(response);
             });
             raw.on("end", function() {
               if (!response) {
                 response = new Response4(body, response_options);
-                resolve2(response);
+                resolve3(response);
               }
             });
             return;
@@ -10256,11 +10256,11 @@ var require_lib2 = __commonJS({
           if (codings == "br" && typeof zlib.createBrotliDecompress === "function") {
             body = body.pipe(zlib.createBrotliDecompress());
             response = new Response4(body, response_options);
-            resolve2(response);
+            resolve3(response);
             return;
           }
           response = new Response4(body, response_options);
-          resolve2(response);
+          resolve3(response);
         });
         writeToStream(req, request);
       });
@@ -13617,14 +13617,14 @@ __export(fileFromPath_exports, {
   fileFromPathSync: () => fileFromPathSync,
   isFile: () => isFile
 });
-function createFileFromPath(path4, { mtimeMs, size }, filenameOrOptions, options2 = {}) {
+function createFileFromPath(path5, { mtimeMs, size }, filenameOrOptions, options2 = {}) {
   let filename;
   if (isPlainObject_default2(filenameOrOptions)) {
     [options2, filename] = [filenameOrOptions, void 0];
   } else {
     filename = filenameOrOptions;
   }
-  const file2 = new FileFromPath({ path: path4, size, lastModified: mtimeMs });
+  const file2 = new FileFromPath({ path: path5, size, lastModified: mtimeMs });
   if (!filename) {
     filename = file2.name;
   }
@@ -13633,13 +13633,13 @@ function createFileFromPath(path4, { mtimeMs, size }, filenameOrOptions, options
     lastModified: file2.lastModified
   });
 }
-function fileFromPathSync(path4, filenameOrOptions, options2 = {}) {
-  const stats = (0, import_fs.statSync)(path4);
-  return createFileFromPath(path4, stats, filenameOrOptions, options2);
+function fileFromPathSync(path5, filenameOrOptions, options2 = {}) {
+  const stats = (0, import_fs.statSync)(path5);
+  return createFileFromPath(path5, stats, filenameOrOptions, options2);
 }
-async function fileFromPath2(path4, filenameOrOptions, options2) {
-  const stats = await import_fs.promises.stat(path4);
-  return createFileFromPath(path4, stats, filenameOrOptions, options2);
+async function fileFromPath2(path5, filenameOrOptions, options2) {
+  const stats = await import_fs.promises.stat(path5);
+  return createFileFromPath(path5, stats, filenameOrOptions, options2);
 }
 var import_fs, import_path, import_node_domexception, __classPrivateFieldSet4, __classPrivateFieldGet5, _FileFromPath_path, _FileFromPath_start, MESSAGE, FileFromPath;
 var init_fileFromPath = __esm({
@@ -13706,7 +13706,7 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode6 = __toESM(require("vscode"));
+var vscode9 = __toESM(require("vscode"));
 
 // src/shared/logger.ts
 var outputChannel;
@@ -13900,7 +13900,7 @@ var WebviewManager = class {
 };
 
 // src/core/controller/NeurocodeController.ts
-var vscode5 = __toESM(require("vscode"));
+var vscode7 = __toESM(require("vscode"));
 
 // node_modules/zod/v3/helpers/util.js
 var util;
@@ -14261,8 +14261,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path4, errorMaps, issueData } = params;
-  const fullPath = [...path4, ...issueData.path || []];
+  const { data, path: path5, errorMaps, issueData } = params;
+  const fullPath = [...path5, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -14377,11 +14377,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path4, key) {
+  constructor(parent, value, path5, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path4;
+    this._path = path5;
     this._key = key;
   }
   get path() {
@@ -18027,10 +18027,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path4) {
-  if (!path4)
+function getElementAtPath(obj, path5) {
+  if (!path5)
     return obj;
-  return path4.reduce((acc, key) => acc?.[key], obj);
+  return path5.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -18413,11 +18413,11 @@ function aborted(x2, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path4, issues) {
+function prefixIssues(path5, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path4);
+    iss.path.unshift(path5);
     return iss;
   });
 }
@@ -24733,10 +24733,9 @@ var ProgressTokenSchema = union([string2(), number2().int()]);
 var CursorSchema = string2();
 var TaskCreationParamsSchema = looseObject({
   /**
-   * Time in milliseconds to keep task results available after completion.
-   * If null, the task has unlimited lifetime until manually cleaned up.
+   * Requested duration in milliseconds to retain task from creation.
    */
-  ttl: union([number2(), _null3()]).optional(),
+  ttl: number2().optional(),
   /**
    * Time in milliseconds to wait between task status requests.
    */
@@ -25036,7 +25035,11 @@ var ClientCapabilitiesSchema = object2({
   /**
    * Present if the client supports task creation.
    */
-  tasks: ClientTasksCapabilitySchema.optional()
+  tasks: ClientTasksCapabilitySchema.optional(),
+  /**
+   * Extensions that the client supports. Keys are extension identifiers (vendor-prefix/extension-name).
+   */
+  extensions: record(string2(), AssertObjectSchema).optional()
 });
 var InitializeRequestParamsSchema = BaseRequestParamsSchema.extend({
   /**
@@ -25097,7 +25100,11 @@ var ServerCapabilitiesSchema = object2({
   /**
    * Present if the server supports task creation.
    */
-  tasks: ServerTasksCapabilitySchema.optional()
+  tasks: ServerTasksCapabilitySchema.optional(),
+  /**
+   * Extensions that the server supports. Keys are extension identifiers (vendor-prefix/extension-name).
+   */
+  extensions: record(string2(), AssertObjectSchema).optional()
 });
 var InitializeResultSchema = ResultSchema.extend({
   /**
@@ -25290,6 +25297,12 @@ var ResourceSchema = object2({
    * The MIME type of this resource, if known.
    */
   mimeType: optional(string2()),
+  /**
+   * The size of the raw resource content, in bytes (i.e., before base64 encoding or any tokenization), if known.
+   *
+   * This can be used by Hosts to display file sizes and estimate context window usage.
+   */
+  size: optional(number2()),
   /**
    * Optional annotations for the client.
    */
@@ -26762,7 +26775,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
+        await new Promise((resolve3) => setTimeout(resolve3, pollInterval));
         options2?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -26779,7 +26792,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options2) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options2 ?? {};
-    return new Promise((resolve2, reject) => {
+    return new Promise((resolve3, reject) => {
       const earlyReject = (error2) => {
         reject(error2);
       };
@@ -26857,7 +26870,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve2(parseResult.data);
+            resolve3(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -27118,12 +27131,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve2, reject) => {
+    return new Promise((resolve3, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve2, interval);
+      const timeoutId = setTimeout(resolve3, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -27918,11 +27931,11 @@ var Client = class extends Protocol {
    * Cache validators for tool output schemas.
    * Called after listTools() to pre-compile validators for better performance.
    */
-  cacheToolMetadata(tools) {
+  cacheToolMetadata(tools2) {
     this._cachedToolOutputValidators.clear();
     this._cachedKnownTaskTools.clear();
     this._cachedRequiredTaskTools.clear();
-    for (const tool of tools) {
+    for (const tool of tools2) {
       if (tool.outputSchema) {
         const toolValidator = this._jsonSchemaValidator.getValidator(tool.outputSchema);
         this._cachedToolOutputValidators.set(tool.name, toolValidator);
@@ -28074,7 +28087,7 @@ var StdioClientTransport = class {
     if (this._process) {
       throw new Error("StdioClientTransport already started! If using Client class, note that connect() calls start() automatically.");
     }
-    return new Promise((resolve2, reject) => {
+    return new Promise((resolve3, reject) => {
       this._process = (0, import_cross_spawn.default)(this._serverParams.command, this._serverParams.args ?? [], {
         // merge default env with server env because mcp server needs some env vars
         env: {
@@ -28083,7 +28096,7 @@ var StdioClientTransport = class {
         },
         stdio: ["pipe", "pipe", this._serverParams.stderr ?? "inherit"],
         shell: false,
-        windowsHide: import_node_process.default.platform === "win32" && isElectron(),
+        windowsHide: import_node_process.default.platform === "win32",
         cwd: this._serverParams.cwd
       });
       this._process.on("error", (error2) => {
@@ -28091,7 +28104,7 @@ var StdioClientTransport = class {
         this.onerror?.(error2);
       });
       this._process.on("spawn", () => {
-        resolve2();
+        resolve3();
       });
       this._process.on("close", (_code) => {
         this._process = void 0;
@@ -28150,22 +28163,22 @@ var StdioClientTransport = class {
     if (this._process) {
       const processToClose = this._process;
       this._process = void 0;
-      const closePromise = new Promise((resolve2) => {
+      const closePromise = new Promise((resolve3) => {
         processToClose.once("close", () => {
-          resolve2();
+          resolve3();
         });
       });
       try {
         processToClose.stdin?.end();
       } catch {
       }
-      await Promise.race([closePromise, new Promise((resolve2) => setTimeout(resolve2, 2e3).unref())]);
+      await Promise.race([closePromise, new Promise((resolve3) => setTimeout(resolve3, 2e3).unref())]);
       if (processToClose.exitCode === null) {
         try {
           processToClose.kill("SIGTERM");
         } catch {
         }
-        await Promise.race([closePromise, new Promise((resolve2) => setTimeout(resolve2, 2e3).unref())]);
+        await Promise.race([closePromise, new Promise((resolve3) => setTimeout(resolve3, 2e3).unref())]);
       }
       if (processToClose.exitCode === null) {
         try {
@@ -28177,22 +28190,19 @@ var StdioClientTransport = class {
     this._readBuffer.clear();
   }
   send(message) {
-    return new Promise((resolve2) => {
+    return new Promise((resolve3) => {
       if (!this._process?.stdin) {
         throw new Error("Not connected");
       }
       const json2 = serializeMessage(message);
       if (this._process.stdin.write(json2)) {
-        resolve2();
+        resolve3();
       } else {
-        this._process.stdin.once("drain", resolve2);
+        this._process.stdin.once("drain", resolve3);
       }
     });
   }
 };
-function isElectron() {
-  return "type" in import_node_process.default;
-}
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/shared/transport.js
 function normalizeHeaders(headers) {
@@ -30234,13 +30244,13 @@ var MultipartBody = class {
 // node_modules/@anthropic-ai/sdk/_shims/node-runtime.mjs
 var import_web = require("node:stream/web");
 var fileFromPathWarned = false;
-async function fileFromPath3(path4, ...args) {
+async function fileFromPath3(path5, ...args) {
   const { fileFromPath: _fileFromPath } = await Promise.resolve().then(() => (init_fileFromPath(), fileFromPath_exports));
   if (!fileFromPathWarned) {
-    console.warn(`fileFromPath is deprecated; use fs.createReadStream(${JSON.stringify(path4)}) instead`);
+    console.warn(`fileFromPath is deprecated; use fs.createReadStream(${JSON.stringify(path5)}) instead`);
     fileFromPathWarned = true;
   }
-  return await _fileFromPath(path4, ...args);
+  return await _fileFromPath(path5, ...args);
 }
 var defaultHttpAgent = new import_agentkeepalive.default({ keepAlive: true, timeout: 5 * 60 * 1e3 });
 var defaultHttpsAgent = new import_agentkeepalive.default.HttpsAgent({ keepAlive: true, timeout: 5 * 60 * 1e3 });
@@ -30862,8 +30872,8 @@ function _addRequestID(value, response) {
 }
 var APIPromise = class _APIPromise extends Promise {
   constructor(responsePromise, parseResponse = defaultParseResponse) {
-    super((resolve2) => {
-      resolve2(null);
+    super((resolve3) => {
+      resolve3(null);
     });
     this.responsePromise = responsePromise;
     this.parseResponse = parseResponse;
@@ -30964,29 +30974,29 @@ var APIClient = class {
   defaultIdempotencyKey() {
     return `stainless-node-retry-${uuid42()}`;
   }
-  get(path4, opts) {
-    return this.methodRequest("get", path4, opts);
+  get(path5, opts) {
+    return this.methodRequest("get", path5, opts);
   }
-  post(path4, opts) {
-    return this.methodRequest("post", path4, opts);
+  post(path5, opts) {
+    return this.methodRequest("post", path5, opts);
   }
-  patch(path4, opts) {
-    return this.methodRequest("patch", path4, opts);
+  patch(path5, opts) {
+    return this.methodRequest("patch", path5, opts);
   }
-  put(path4, opts) {
-    return this.methodRequest("put", path4, opts);
+  put(path5, opts) {
+    return this.methodRequest("put", path5, opts);
   }
-  delete(path4, opts) {
-    return this.methodRequest("delete", path4, opts);
+  delete(path5, opts) {
+    return this.methodRequest("delete", path5, opts);
   }
-  methodRequest(method, path4, opts) {
+  methodRequest(method, path5, opts) {
     return this.request(Promise.resolve(opts).then(async (opts2) => {
       const body = opts2 && isBlobLike(opts2?.body) ? new DataView(await opts2.body.arrayBuffer()) : opts2?.body instanceof DataView ? opts2.body : opts2?.body instanceof ArrayBuffer ? new DataView(opts2.body) : opts2 && ArrayBuffer.isView(opts2?.body) ? new DataView(opts2.body.buffer) : opts2?.body;
-      return { method, path: path4, ...opts2, body };
+      return { method, path: path5, ...opts2, body };
     }));
   }
-  getAPIList(path4, Page2, opts) {
-    return this.requestAPIList(Page2, { method: "get", path: path4, ...opts });
+  getAPIList(path5, Page2, opts) {
+    return this.requestAPIList(Page2, { method: "get", path: path5, ...opts });
   }
   calculateContentLength(body) {
     if (typeof body === "string") {
@@ -31005,10 +31015,10 @@ var APIClient = class {
   }
   buildRequest(options2, { retryCount = 0 } = {}) {
     options2 = { ...options2 };
-    const { method, path: path4, query, headers = {} } = options2;
+    const { method, path: path5, query, headers = {} } = options2;
     const body = ArrayBuffer.isView(options2.body) || options2.__binaryRequest && typeof options2.body === "string" ? options2.body : isMultipartBody(options2.body) ? options2.body.body : options2.body ? JSON.stringify(options2.body, null, 2) : null;
     const contentLength = this.calculateContentLength(body);
-    const url2 = this.buildURL(path4, query);
+    const url2 = this.buildURL(path5, query);
     if ("timeout" in options2)
       validatePositiveInteger("timeout", options2.timeout);
     options2.timeout = options2.timeout ?? this.timeout;
@@ -31132,8 +31142,8 @@ var APIClient = class {
     const request = this.makeRequest(options2, null);
     return new PagePromise(this, request, Page2);
   }
-  buildURL(path4, query) {
-    const url2 = isAbsoluteURL(path4) ? new URL(path4) : new URL(this.baseURL + (this.baseURL.endsWith("/") && path4.startsWith("/") ? path4.slice(1) : path4));
+  buildURL(path5, query) {
+    const url2 = isAbsoluteURL(path5) ? new URL(path5) : new URL(this.baseURL + (this.baseURL.endsWith("/") && path5.startsWith("/") ? path5.slice(1) : path5));
     const defaultQuery = this.defaultQuery();
     if (!isEmptyObj(defaultQuery)) {
       query = { ...defaultQuery, ...query };
@@ -31455,7 +31465,7 @@ var startsWithSchemeRegexp = /^[a-z][a-z0-9+.-]*:/i;
 var isAbsoluteURL = (url2) => {
   return startsWithSchemeRegexp.test(url2);
 };
-var sleep = (ms) => new Promise((resolve2) => setTimeout(resolve2, ms));
+var sleep = (ms) => new Promise((resolve3) => setTimeout(resolve3, ms));
 var validatePositiveInteger = (name, n2) => {
   if (typeof n2 !== "number" || !Number.isInteger(n2)) {
     throw new AnthropicError(`${name} must be an integer`);
@@ -32068,12 +32078,12 @@ var BetaMessageStream = class _BetaMessageStream {
       }
       return this._emit("error", new AnthropicError(String(error2)));
     });
-    __classPrivateFieldSet7(this, _BetaMessageStream_connectedPromise, new Promise((resolve2, reject) => {
-      __classPrivateFieldSet7(this, _BetaMessageStream_resolveConnectedPromise, resolve2, "f");
+    __classPrivateFieldSet7(this, _BetaMessageStream_connectedPromise, new Promise((resolve3, reject) => {
+      __classPrivateFieldSet7(this, _BetaMessageStream_resolveConnectedPromise, resolve3, "f");
       __classPrivateFieldSet7(this, _BetaMessageStream_rejectConnectedPromise, reject, "f");
     }), "f");
-    __classPrivateFieldSet7(this, _BetaMessageStream_endPromise, new Promise((resolve2, reject) => {
-      __classPrivateFieldSet7(this, _BetaMessageStream_resolveEndPromise, resolve2, "f");
+    __classPrivateFieldSet7(this, _BetaMessageStream_endPromise, new Promise((resolve3, reject) => {
+      __classPrivateFieldSet7(this, _BetaMessageStream_resolveEndPromise, resolve3, "f");
       __classPrivateFieldSet7(this, _BetaMessageStream_rejectEndPromise, reject, "f");
     }), "f");
     __classPrivateFieldGet8(this, _BetaMessageStream_connectedPromise, "f").catch(() => {
@@ -32128,8 +32138,8 @@ var BetaMessageStream = class _BetaMessageStream {
     runner._run(() => runner._createMessage(messages, { ...params, stream: true }, { ...options2, headers: { ...options2?.headers, "X-Stainless-Helper-Method": "stream" } }));
     return runner;
   }
-  _run(executor) {
-    executor().then(() => {
+  _run(executor2) {
+    executor2().then(() => {
       this._emitFinal();
       this._emit("end");
     }, __classPrivateFieldGet8(this, _BetaMessageStream_handleError, "f"));
@@ -32231,11 +32241,11 @@ var BetaMessageStream = class _BetaMessageStream {
    *   const message = await stream.emitted('message') // rejects if the stream errors
    */
   emitted(event) {
-    return new Promise((resolve2, reject) => {
+    return new Promise((resolve3, reject) => {
       __classPrivateFieldSet7(this, _BetaMessageStream_catchingPromiseCreated, true, "f");
       if (event !== "error")
         this.once("error", reject);
-      this.once(event, resolve2);
+      this.once(event, resolve3);
     });
   }
   async done() {
@@ -32519,7 +32529,7 @@ var BetaMessageStream = class _BetaMessageStream {
           if (done) {
             return { value: void 0, done: true };
           }
-          return new Promise((resolve2, reject) => readQueue.push({ resolve: resolve2, reject })).then((chunk2) => chunk2 ? { value: chunk2, done: false } : { value: void 0, done: true });
+          return new Promise((resolve3, reject) => readQueue.push({ resolve: resolve3, reject })).then((chunk2) => chunk2 ? { value: chunk2, done: false } : { value: void 0, done: true });
         }
         const chunk = pushQueue.shift();
         return { value: chunk, done: false };
@@ -32793,12 +32803,12 @@ var MessageStream = class _MessageStream {
       }
       return this._emit("error", new AnthropicError(String(error2)));
     });
-    __classPrivateFieldSet8(this, _MessageStream_connectedPromise, new Promise((resolve2, reject) => {
-      __classPrivateFieldSet8(this, _MessageStream_resolveConnectedPromise, resolve2, "f");
+    __classPrivateFieldSet8(this, _MessageStream_connectedPromise, new Promise((resolve3, reject) => {
+      __classPrivateFieldSet8(this, _MessageStream_resolveConnectedPromise, resolve3, "f");
       __classPrivateFieldSet8(this, _MessageStream_rejectConnectedPromise, reject, "f");
     }), "f");
-    __classPrivateFieldSet8(this, _MessageStream_endPromise, new Promise((resolve2, reject) => {
-      __classPrivateFieldSet8(this, _MessageStream_resolveEndPromise, resolve2, "f");
+    __classPrivateFieldSet8(this, _MessageStream_endPromise, new Promise((resolve3, reject) => {
+      __classPrivateFieldSet8(this, _MessageStream_resolveEndPromise, resolve3, "f");
       __classPrivateFieldSet8(this, _MessageStream_rejectEndPromise, reject, "f");
     }), "f");
     __classPrivateFieldGet9(this, _MessageStream_connectedPromise, "f").catch(() => {
@@ -32853,8 +32863,8 @@ var MessageStream = class _MessageStream {
     runner._run(() => runner._createMessage(messages, { ...params, stream: true }, { ...options2, headers: { ...options2?.headers, "X-Stainless-Helper-Method": "stream" } }));
     return runner;
   }
-  _run(executor) {
-    executor().then(() => {
+  _run(executor2) {
+    executor2().then(() => {
       this._emitFinal();
       this._emit("end");
     }, __classPrivateFieldGet9(this, _MessageStream_handleError, "f"));
@@ -32956,11 +32966,11 @@ var MessageStream = class _MessageStream {
    *   const message = await stream.emitted('message') // rejects if the stream errors
    */
   emitted(event) {
-    return new Promise((resolve2, reject) => {
+    return new Promise((resolve3, reject) => {
       __classPrivateFieldSet8(this, _MessageStream_catchingPromiseCreated, true, "f");
       if (event !== "error")
         this.once("error", reject);
-      this.once(event, resolve2);
+      this.once(event, resolve3);
     });
   }
   async done() {
@@ -33244,7 +33254,7 @@ var MessageStream = class _MessageStream {
           if (done) {
             return { value: void 0, done: true };
           }
-          return new Promise((resolve2, reject) => readQueue.push({ resolve: resolve2, reject })).then((chunk2) => chunk2 ? { value: chunk2, done: false } : { value: void 0, done: true });
+          return new Promise((resolve3, reject) => readQueue.push({ resolve: resolve3, reject })).then((chunk2) => chunk2 ? { value: chunk2, done: false } : { value: void 0, done: true });
         }
         const chunk = pushQueue.shift();
         return { value: chunk, done: false };
@@ -33455,161 +33465,122 @@ Anthropic.Beta = Beta;
 var { HUMAN_PROMPT, AI_PROMPT } = Anthropic;
 var sdk_default = Anthropic;
 
-// src/features/preferences/profiles.ts
-var NEURODIVERSITY_PROFILES = {
-  neurotypical: {
-    type: "neurotypical",
-    label: "Neurotypical",
-    description: "Standard presentation with good readability and balanced structure.",
-    defaultPreferences: {
-      visual: {
-        colorScheme: "default",
-        fontSize: 14,
-        fontFamily: "default",
-        lineSpacing: 1.5,
-        letterSpacing: 0,
-        paragraphSpacing: 1,
-        maxLineWidth: 80
-      },
-      structural: {
-        chunkSize: "large",
-        progressiveDisclosure: false,
-        showStepNumbers: true,
-        showCheckboxes: false,
-        bulletStyle: "bullets",
-        sectionCollapsible: false,
-        taskGranularity: "standard"
-      },
-      cognitive: {
-        focusMode: false,
-        textToSpeech: false,
-        highlightCurrentStep: false,
-        showTimers: false,
-        breakReminders: false,
-        breakIntervalMinutes: 45,
-        simplifiedLanguage: false,
-        showExamples: true
-      }
-    }
+// src/shared/ProfileRegistry.ts
+var registry2 = /* @__PURE__ */ new Map();
+var ProfileRegistry = {
+  /**
+   * Register a neurodiversity module.
+   * Overwrites any existing module with the same type key.
+   */
+  register(mod) {
+    registry2.set(mod.type, mod);
   },
-  dyslexia: {
-    type: "dyslexia",
-    label: "Dyslexia",
-    description: "Optimized for reading ease: larger fonts, increased spacing, dyslexia-friendly typeface, shorter paragraphs, and visual anchors.",
-    defaultPreferences: {
-      visual: {
-        colorScheme: "warm",
-        fontSize: 16,
-        fontFamily: "OpenDyslexic",
-        lineSpacing: 2,
-        letterSpacing: 0.05,
-        paragraphSpacing: 1.5,
-        maxLineWidth: 65
-      },
-      structural: {
-        chunkSize: "small",
-        progressiveDisclosure: true,
-        showStepNumbers: true,
-        showCheckboxes: true,
-        bulletStyle: "numbers",
-        sectionCollapsible: true,
-        taskGranularity: "detailed"
-      },
-      cognitive: {
-        focusMode: false,
-        textToSpeech: true,
-        highlightCurrentStep: true,
-        showTimers: false,
-        breakReminders: false,
-        breakIntervalMinutes: 30,
-        simplifiedLanguage: true,
-        showExamples: true
-      }
-    }
+  /**
+   * Get a module by type. Returns undefined if not registered.
+   */
+  get(type) {
+    return registry2.get(type);
   },
-  autism: {
-    type: "autism",
-    label: "Autism Spectrum",
-    description: "Clear structure, precise language, consistent patterns, explicit expectations, and reduced sensory complexity.",
-    defaultPreferences: {
-      visual: {
-        colorScheme: "cool",
-        fontSize: 14,
-        fontFamily: "Atkinson Hyperlegible",
-        lineSpacing: 1.6,
-        letterSpacing: 0,
-        paragraphSpacing: 1.2,
-        maxLineWidth: 75
-      },
-      structural: {
-        chunkSize: "medium",
-        progressiveDisclosure: false,
-        showStepNumbers: true,
-        showCheckboxes: true,
-        bulletStyle: "numbers",
-        sectionCollapsible: false,
-        taskGranularity: "detailed"
-      },
-      cognitive: {
-        focusMode: true,
-        textToSpeech: false,
-        highlightCurrentStep: true,
-        showTimers: true,
-        breakReminders: false,
-        breakIntervalMinutes: 40,
-        simplifiedLanguage: false,
-        showExamples: true
-      }
+  /**
+   * Get a module by type, throwing if not found.
+   */
+  getOrThrow(type) {
+    const mod = registry2.get(type);
+    if (!mod) {
+      throw new Error(
+        `No neurodiversity module registered for type "${type}". Available: ${[...registry2.keys()].join(", ")}`
+      );
     }
+    return mod;
   },
-  adhd: {
-    type: "adhd",
-    label: "ADHD",
-    description: "Engagement-focused: small chunks, frequent checkpoints, visual variety, time estimates, and break reminders.",
-    defaultPreferences: {
-      visual: {
-        colorScheme: "pastel",
-        fontSize: 15,
-        fontFamily: "default",
-        lineSpacing: 1.6,
-        letterSpacing: 0,
-        paragraphSpacing: 1.3,
-        maxLineWidth: 70
-      },
-      structural: {
-        chunkSize: "small",
-        progressiveDisclosure: true,
-        showStepNumbers: true,
-        showCheckboxes: true,
-        bulletStyle: "icons",
-        sectionCollapsible: true,
-        taskGranularity: "standard"
-      },
-      cognitive: {
-        focusMode: true,
-        textToSpeech: false,
-        highlightCurrentStep: true,
-        showTimers: true,
-        breakReminders: true,
-        breakIntervalMinutes: 20,
-        simplifiedLanguage: false,
-        showExamples: true
-      }
+  /**
+   * Get all registered modules.
+   */
+  getAll() {
+    return [...registry2.values()];
+  },
+  /**
+   * Get all registered type keys.
+   */
+  getTypes() {
+    return [...registry2.keys()];
+  },
+  /**
+   * Get all profiles as a record (backward-compatible with NEURODIVERSITY_PROFILES).
+   */
+  getAllProfiles() {
+    const result = {};
+    for (const [key, mod] of registry2) {
+      result[key] = mod.profile;
     }
+    return result;
+  },
+  /**
+   * Get all strategies as a record.
+   */
+  getAllStrategies() {
+    const result = {};
+    for (const [key, mod] of registry2) {
+      result[key] = mod.strategy;
+    }
+    return result;
+  },
+  /**
+   * Build combined prompt fragments for all registered profiles.
+   */
+  buildCombinedPromptFragments() {
+    return [...registry2.values()].map((mod) => mod.promptFragment).join("\n\n");
+  },
+  /**
+   * Get default preferences for a type.
+   */
+  getDefaultPreferences(type) {
+    const mod = this.getOrThrow(type);
+    const p2 = mod.profile.defaultPreferences;
+    return {
+      neurodiversityType: type,
+      visual: p2.visual,
+      structural: p2.structural,
+      cognitive: p2.cognitive
+    };
+  },
+  /**
+   * Clear all registrations (useful for testing).
+   */
+  clear() {
+    registry2.clear();
   }
 };
+
+// src/features/preferences/profiles.ts
+var NEURODIVERSITY_PROFILES = new Proxy(
+  {},
+  {
+    get(_target, prop) {
+      const mod = ProfileRegistry.get(prop);
+      return mod?.profile;
+    },
+    ownKeys() {
+      return ProfileRegistry.getTypes();
+    },
+    getOwnPropertyDescriptor(_target, prop) {
+      const mod = ProfileRegistry.get(prop);
+      if (!mod) {
+        return void 0;
+      }
+      return { configurable: true, enumerable: true, value: mod.profile };
+    },
+    has(_target, prop) {
+      return ProfileRegistry.get(prop) !== void 0;
+    }
+  }
+);
 function getDefaultPreferences(type) {
-  const profile = NEURODIVERSITY_PROFILES[type];
-  return {
-    neurodiversityType: type,
-    visual: profile.defaultPreferences.visual,
-    structural: profile.defaultPreferences.structural,
-    cognitive: profile.defaultPreferences.cognitive
-  };
+  return ProfileRegistry.getDefaultPreferences(type);
 }
 
 // src/services/llm/AdaptationEngine.ts
-var SYSTEM_PROMPT = `You are an adaptive learning assistant for the NeuroCode Adapter system.
+var SYSTEM_PROMPT_PREFIX = `You are an adaptive learning assistant for the NeuroCode Adapter system.
 Your role is to transform programming assignment content to better support neurodiverse learners.
 
 You MUST respond with valid JSON matching the AdaptationResponse schema:
@@ -33631,39 +33602,13 @@ You MUST respond with valid JSON matching the AdaptationResponse schema:
   "confidenceScore": 0.0-1.0
 }
 
-Adaptation principles by neurodiversity type:
+Adaptation principles by neurodiversity type:`;
+function buildSystemPrompt() {
+  const fragments = ProfileRegistry.buildCombinedPromptFragments();
+  return `${SYSTEM_PROMPT_PREFIX}
 
-**Dyslexia:**
-- Use shorter paragraphs and bullet points
-- Increase white space between sections
-- Avoid justified text alignment
-- Use sans-serif fonts, larger font sizes
-- Break complex instructions into numbered steps
-- Add visual separators between logical blocks
-- Use color coding for different types of information
-
-**Autism (ASD):**
-- Use precise, literal language (avoid idioms and ambiguity)
-- Provide explicit structure with clear headings
-- Include concrete examples for every abstract concept
-- Use consistent formatting patterns throughout
-- Minimize sensory overload (reduce decorative elements)
-- Provide clear success criteria and completion indicators
-- Use checklists for multi-step tasks
-
-**ADHD:**
-- Front-load key information (most important first)
-- Break content into small, digestible chunks
-- Add time estimates for each section
-- Use visual variety (icons, colors, borders) to maintain engagement
-- Include frequent progress checkpoints
-- Provide "quick summary" boxes for each section
-- Add interactive elements (checkboxes, expandable details)
-
-**Neurotypical:**
-- Standard presentation with good readability
-- Balanced structure and visual hierarchy
-- Clear but not over-simplified language`;
+${fragments}`;
+}
 function buildAdaptationPrompt(request) {
   const { assignment, userPreferences, requestType, targetSectionId } = request;
   const profile = NEURODIVERSITY_PROFILES[userPreferences.neurodiversityType];
@@ -33835,7 +33780,7 @@ ${s2.content}`).join("\n\n"),
     const stream = this.anthropicClient.messages.stream({
       model: "claude-sonnet-4-20250514",
       max_tokens: 64e3,
-      system: SYSTEM_PROMPT,
+      system: buildSystemPrompt(),
       messages: [{ role: "user", content: prompt }]
     });
     const response = await stream.finalMessage();
@@ -33861,51 +33806,24 @@ ${s2.content}`).join("\n\n"),
   /**
    * Rule-based adaptation fallback — no LLM needed.
    * Applies deterministic transformations based on neurodiversity profile.
+   *
+   * REFACTORED: Delegates to ProfileRegistry's ruleBasedAdapter.
+   * Adding a new profile's rule-based adapter no longer requires editing this file.
    */
   generateRuleBased(request) {
     const { assignment, userPreferences } = request;
     const profileType = userPreferences.neurodiversityType;
+    const mod = ProfileRegistry.get(profileType);
     const adaptedSections = assignment.sections.map((section) => {
-      let content = section.content;
-      const visualMods = [];
-      const structuralChanges = [];
-      switch (profileType) {
-        case "dyslexia":
-          content = content.replace(/(.{200,}?\.)\s/g, "$1\n\n");
-          visualMods.push(
-            { type: "font", target: "body", value: userPreferences.visual.fontFamily || "OpenDyslexic" },
-            { type: "spacing", target: "line-height", value: "1.8" },
-            { type: "spacing", target: "letter-spacing", value: "0.05em" }
-          );
-          structuralChanges.push("Split long paragraphs", "Increased spacing");
-          break;
-        case "autism":
-          content = content.replace(/\n(#+\s)/g, "\n---\n$1");
-          visualMods.push(
-            { type: "border", target: "sections", value: "1px solid #ddd" },
-            { type: "color", target: "headings", value: "#2c3e50" }
-          );
-          structuralChanges.push("Added section separators", "Explicit heading hierarchy");
-          break;
-        case "adhd":
-          content = `> **Quick Summary:** ${section.title}
-
-${content}`;
-          visualMods.push(
-            { type: "highlight", target: "key-terms", value: "#fff3cd" },
-            { type: "icon", target: "steps", value: "checkbox" }
-          );
-          structuralChanges.push("Added quick summary", "Added progress checkboxes");
-          break;
-        default:
-          break;
+      if (mod) {
+        return mod.ruleBasedAdapter(section, userPreferences);
       }
       return {
         originalSectionId: section.id,
         adaptedTitle: section.title,
-        adaptedContent: content,
-        visualModifications: visualMods,
-        structuralChanges
+        adaptedContent: section.content,
+        visualModifications: [],
+        structuralChanges: []
       };
     });
     return {
@@ -33961,41 +33879,62 @@ var PreferenceManager = class _PreferenceManager {
       return;
     }
     let changed = false;
-    const fontSize = config2.get("fontSize");
-    if (fontSize !== void 0 && fontSize !== this.currentPreferences.visual.fontSize) {
-      this.currentPreferences.visual.fontSize = fontSize;
-      changed = true;
-    }
-    const fontFamily = config2.get("fontFamily");
-    if (fontFamily !== void 0 && fontFamily !== this.currentPreferences.visual.fontFamily) {
-      this.currentPreferences.visual.fontFamily = fontFamily;
-      changed = true;
-    }
-    const lineSpacing = config2.get("lineSpacing");
-    if (lineSpacing !== void 0 && lineSpacing !== this.currentPreferences.visual.lineSpacing) {
-      this.currentPreferences.visual.lineSpacing = lineSpacing;
-      changed = true;
-    }
-    const colorScheme = config2.get("colorScheme");
-    if (colorScheme !== void 0 && colorScheme !== this.currentPreferences.visual.colorScheme) {
-      this.currentPreferences.visual.colorScheme = colorScheme;
-      changed = true;
-    }
-    const focusMode = config2.get("focusMode");
-    if (focusMode !== void 0 && focusMode !== this.currentPreferences.cognitive.focusMode) {
-      this.currentPreferences.cognitive.focusMode = focusMode;
-      changed = true;
-    }
-    const tts = config2.get("textToSpeech");
-    if (tts !== void 0 && tts !== this.currentPreferences.cognitive.textToSpeech) {
-      this.currentPreferences.cognitive.textToSpeech = tts;
-      changed = true;
-    }
-    const taskGranularity = config2.get("taskGranularity");
-    if (taskGranularity && taskGranularity !== this.currentPreferences.structural.taskGranularity) {
-      this.currentPreferences.structural.taskGranularity = taskGranularity;
-      changed = true;
-    }
+    const sync = (key, current, setter) => {
+      const value = config2.get(key);
+      if (value !== void 0 && value !== current) {
+        setter(value);
+        changed = true;
+      }
+    };
+    sync(
+      "fontSize",
+      this.currentPreferences.visual.fontSize,
+      (v2) => {
+        this.currentPreferences.visual.fontSize = v2;
+      }
+    );
+    sync(
+      "fontFamily",
+      this.currentPreferences.visual.fontFamily,
+      (v2) => {
+        this.currentPreferences.visual.fontFamily = v2;
+      }
+    );
+    sync(
+      "lineSpacing",
+      this.currentPreferences.visual.lineSpacing,
+      (v2) => {
+        this.currentPreferences.visual.lineSpacing = v2;
+      }
+    );
+    sync(
+      "colorScheme",
+      this.currentPreferences.visual.colorScheme,
+      (v2) => {
+        this.currentPreferences.visual.colorScheme = v2;
+      }
+    );
+    sync(
+      "focusMode",
+      this.currentPreferences.cognitive.focusMode,
+      (v2) => {
+        this.currentPreferences.cognitive.focusMode = v2;
+      }
+    );
+    sync(
+      "textToSpeech",
+      this.currentPreferences.cognitive.textToSpeech,
+      (v2) => {
+        this.currentPreferences.cognitive.textToSpeech = v2;
+      }
+    );
+    sync(
+      "taskGranularity",
+      this.currentPreferences.structural.taskGranularity,
+      (v2) => {
+        this.currentPreferences.structural.taskGranularity = v2;
+      }
+    );
     if (changed) {
       this.save();
       this.notifyChange();
@@ -36803,377 +36742,40 @@ function buildStrategy(preferences) {
   return base;
 }
 function getBaseStrategy(type) {
-  switch (type) {
-    case "dyslexia":
-      return {
-        cssVariables: {
-          "--nc-font-size": "16px",
-          "--nc-font-family": "'OpenDyslexic', 'Comic Sans MS', sans-serif",
-          "--nc-line-height": "2.0",
-          "--nc-letter-spacing": "0.05em",
-          "--nc-paragraph-spacing": "1.5em",
-          "--nc-max-width": "65ch",
-          "--nc-bg-color": "#fdf6e3",
-          "--nc-text-color": "#333",
-          "--nc-heading-color": "#2c3e50",
-          "--nc-accent-color": "#e67e22",
-          "--nc-border-radius": "8px",
-          "--nc-code-bg": "#fef9ef"
-        },
-        containerClasses: ["nc-profile-dyslexia"],
-        collapseCodeBlocks: false,
-        addCheckboxes: true,
-        insertDividers: true,
-        addSummaryBoxes: false,
-        maxParagraphLength: 200,
-        showTimeEstimates: false
-      };
-    case "autism":
-      return {
-        cssVariables: {
-          "--nc-font-size": "14px",
-          "--nc-font-family": "'Atkinson Hyperlegible', 'Segoe UI', sans-serif",
-          "--nc-line-height": "1.6",
-          "--nc-letter-spacing": "0em",
-          "--nc-paragraph-spacing": "1.2em",
-          "--nc-max-width": "75ch",
-          "--nc-bg-color": "#f0f4f8",
-          "--nc-text-color": "#2d3748",
-          "--nc-heading-color": "#1a365d",
-          "--nc-accent-color": "#3182ce",
-          "--nc-border-radius": "4px",
-          "--nc-code-bg": "#edf2f7"
-        },
-        containerClasses: ["nc-profile-autism"],
-        collapseCodeBlocks: false,
-        addCheckboxes: true,
-        insertDividers: true,
-        addSummaryBoxes: false,
-        maxParagraphLength: 400,
-        showTimeEstimates: true
-      };
-    case "adhd":
-      return {
-        cssVariables: {
-          "--nc-font-size": "15px",
-          "--nc-font-family": "'Segoe UI', system-ui, sans-serif",
-          "--nc-line-height": "1.6",
-          "--nc-letter-spacing": "0em",
-          "--nc-paragraph-spacing": "1.3em",
-          "--nc-max-width": "70ch",
-          "--nc-bg-color": "#fafafa",
-          "--nc-text-color": "#374151",
-          "--nc-heading-color": "#7c3aed",
-          "--nc-accent-color": "#8b5cf6",
-          "--nc-border-radius": "12px",
-          "--nc-code-bg": "#f5f3ff"
-        },
-        containerClasses: ["nc-profile-adhd"],
-        collapseCodeBlocks: true,
-        addCheckboxes: true,
-        insertDividers: true,
-        addSummaryBoxes: true,
-        maxParagraphLength: 150,
-        showTimeEstimates: true
-      };
-    default:
-      return {
-        cssVariables: {
-          "--nc-font-size": "14px",
-          "--nc-font-family": "'Segoe UI', system-ui, sans-serif",
-          "--nc-line-height": "1.5",
-          "--nc-letter-spacing": "0em",
-          "--nc-paragraph-spacing": "1em",
-          "--nc-max-width": "80ch",
-          "--nc-bg-color": "#ffffff",
-          "--nc-text-color": "#1f2937",
-          "--nc-heading-color": "#111827",
-          "--nc-accent-color": "#2563eb",
-          "--nc-border-radius": "6px",
-          "--nc-code-bg": "#f3f4f6"
-        },
-        containerClasses: ["nc-profile-neurotypical"],
-        collapseCodeBlocks: false,
-        addCheckboxes: false,
-        insertDividers: false,
-        addSummaryBoxes: false,
-        maxParagraphLength: 500,
-        showTimeEstimates: false
-      };
+  const mod = ProfileRegistry.get(type);
+  if (mod) {
+    return JSON.parse(JSON.stringify(mod.strategy));
   }
+  const fallback = ProfileRegistry.get("neurotypical");
+  if (fallback) {
+    return JSON.parse(JSON.stringify(fallback.strategy));
+  }
+  return {
+    cssVariables: {
+      "--nc-font-size": "14px",
+      "--nc-font-family": "'Segoe UI', system-ui, sans-serif",
+      "--nc-line-height": "1.5",
+      "--nc-letter-spacing": "0em",
+      "--nc-paragraph-spacing": "1em",
+      "--nc-max-width": "80ch",
+      "--nc-bg-color": "#ffffff",
+      "--nc-text-color": "#1f2937",
+      "--nc-heading-color": "#111827",
+      "--nc-accent-color": "#2563eb",
+      "--nc-border-radius": "6px",
+      "--nc-code-bg": "#f3f4f6"
+    },
+    containerClasses: ["nc-profile-neurotypical"],
+    collapseCodeBlocks: false,
+    addCheckboxes: false,
+    insertDividers: false,
+    addSummaryBoxes: false,
+    maxParagraphLength: 500,
+    showTimeEstimates: false
+  };
 }
 
-// src/features/adaptive/AdaptiveRenderer.ts
-var AdaptiveRenderer = class {
-  /**
-   * Render a full adaptive view of an assignment.
-   */
-  render(assignment, preferences, adaptation, requestType = "full_adaptation") {
-    const strategy = buildStrategy(preferences);
-    const cssVars = Object.entries(strategy.cssVariables).map(([k2, v2]) => `${k2}: ${v2};`).join("\n      ");
-    const classes = strategy.containerClasses.join(" ");
-    const sectionsHtml = assignment.sections.map((section) => {
-      const adapted = adaptation?.adaptedSections.find(
-        (a2) => a2.originalSectionId === section.id
-      );
-      return adapted ? this.renderAdaptedSection(adapted, section, strategy) : this.renderOriginalSection(section, strategy);
-    }).join("\n");
-    const supportHtml = adaptation?.supportMessage ? `<div class="nc-support-message">${this.escapeHtml(adaptation.supportMessage)}</div>` : "";
-    const actionsHtml = requestType === "help_request" && adaptation?.suggestedActions?.length ? `<div class="nc-actions">
-          ${adaptation.suggestedActions.map(
-      (a2) => `<div class="nc-action nc-action-${a2.priority}">
-                  <span class="nc-action-icon">${this.getActionIcon(a2.type)}</span>
-                  <span>${this.escapeHtml(a2.message)}</span>
-                </div>`
-    ).join("\n")}
-        </div>` : "";
-    const reasoningHtml = adaptation?.reasoning ? `<details class="nc-reasoning">
-          <summary>Why these adaptations?</summary>
-          <p>${this.escapeHtml(adaptation.reasoning)}</p>
-          <p class="nc-confidence">Confidence: ${Math.round((adaptation.confidenceScore ?? 0) * 100)}%</p>
-        </details>` : "";
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${this.escapeHtml(assignment.metadata.title)}</title>
-  <style>
-    #nc-loading-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.45);
-      z-index: 9999;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 1.2em;
-    }
-    #nc-loading-overlay .nc-spinner {
-      width: 48px; height: 48px;
-      border: 5px solid rgba(255,255,255,0.25);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: nc-spin 0.9s linear infinite;
-    }
-    #nc-loading-overlay .nc-loading-label {
-      color: #fff;
-      font-size: 1.05em;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-      text-align: center;
-      max-width: 280px;
-    }
-    #nc-loading-overlay .nc-loading-sub {
-      color: rgba(255,255,255,0.7);
-      font-size: 0.85em;
-      text-align: center;
-      max-width: 260px;
-    }
-    @keyframes nc-spin { to { transform: rotate(360deg); } }
-  </style>
-  <!-- KaTeX for LaTeX formula rendering (solves garbled math symbols from PDF) -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
-    onload="renderMathInElement(document.body, {
-      delimiters: [
-        {left: '$$', right: '$$', display: true},
-        {left: '$', right: '$', display: false},
-        {left: '\\\\(', right: '\\\\)', display: false},
-        {left: '\\\\[', right: '\\\\]', display: true}
-      ],
-      throwOnError: false
-    });">
-  </script>
-  <style>
-    :root {
-      ${cssVars}
-    }
-    ${BASE_CSS}
-    ${PROFILE_CSS}
-  </style>
-</head>
-<body>
-  <!-- Loading overlay: shown while LLM adaptation is in progress -->
-  <div id="nc-loading-overlay">
-    <div class="nc-spinner"></div>
-    <div class="nc-loading-label">Adapting content for you...</div>
-    <div class="nc-loading-sub">Generating a personalised view with AI. This may take a few seconds.</div>
-  </div>
-
-  <div class="nc-container ${classes}">
-    <header class="nc-header">
-      <h1>${this.escapeHtml(assignment.metadata.title)}</h1>
-      <div class="nc-meta">
-        <span class="nc-badge nc-difficulty-${assignment.metadata.difficulty}">
-          ${assignment.metadata.difficulty}
-        </span>
-        <span class="nc-badge">${assignment.metadata.language}</span>
-        ${strategy.showTimeEstimates ? `<span class="nc-badge nc-time">~${assignment.metadata.estimatedMinutes} min</span>` : ""}
-      </div>
-      ${assignment.metadata.description ? `<p class="nc-description">${this.escapeHtml(assignment.metadata.description)}</p>` : ""}
-    </header>
-
-    ${supportHtml}
-    ${actionsHtml}
-
-    <main class="nc-content">
-      ${sectionsHtml}
-    </main>
-
-    ${reasoningHtml}
-
-    <footer class="nc-footer">
-      <p>Adapted for <strong>${preferences.neurodiversityType}</strong> profile by NeuroCode Adapter</p>
-    </footer>
-  </div>
-
-  <script>
-    const vscode = acquireVsCodeApi();
-
-    // Listen for progress messages from the extension host
-    window.addEventListener('message', (event) => {
-      const msg = event.data;
-      if (msg.type === 'adaptation_progress') {
-        const overlay = document.getElementById('nc-loading-overlay');
-        if (!overlay) { return; }
-        if (msg.status === 'started') {
-          overlay.style.display = 'flex';
-        } else {
-          // 'complete' or 'error' \u2014 hide overlay
-          overlay.style.display = 'none';
-        }
-      }
-    });
-
-    // Section view tracking
-    document.querySelectorAll('.nc-section').forEach(section => {
-      const observer = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            vscode.postMessage({
-              type: 'section_viewed',
-              sectionId: section.dataset.sectionId
-            });
-          }
-        });
-      }, { threshold: 0.5 });
-      observer.observe(section);
-    });
-
-    // Checkbox tracking
-    document.querySelectorAll('.nc-checkbox').forEach(cb => {
-      cb.addEventListener('change', () => {
-        vscode.postMessage({
-          type: 'section_viewed',
-          sectionId: cb.dataset.sectionId
-        });
-      });
-    });
-
-    // Help request
-    document.querySelectorAll('.nc-help-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        vscode.postMessage({
-          type: 'request_help',
-          question: 'I need help with this section',
-          sectionId: btn.dataset.sectionId
-        });
-      });
-    });
-  </script>
-</body>
-</html>`;
-  }
-  /**
-   * Render an LLM-adapted section.
-   */
-  renderAdaptedSection(adapted, original, strategy) {
-    const content = this.markdownToHtml(adapted.adaptedContent);
-    const divider = strategy.insertDividers ? '<hr class="nc-divider">' : "";
-    return `
-    ${divider}
-    <section class="nc-section nc-section-${original.type}" data-section-id="${original.id}">
-      <div class="nc-section-header">
-        ${strategy.addCheckboxes ? `<input type="checkbox" class="nc-checkbox" data-section-id="${original.id}">` : ""}
-        <h2>${this.escapeHtml(adapted.adaptedTitle)}</h2>
-        <button class="nc-help-btn" data-section-id="${original.id}" title="Get help">?</button>
-      </div>
-      <div class="nc-section-body">${content}</div>
-      ${adapted.structuralChanges.length > 0 ? `<div class="nc-adaptations-note">
-            <small>Adaptations: ${adapted.structuralChanges.join(", ")}</small>
-          </div>` : ""}
-    </section>`;
-  }
-  /**
-   * Render an original (non-adapted) section with strategy transforms.
-   */
-  renderOriginalSection(section, strategy) {
-    let content = section.content;
-    if (strategy.maxParagraphLength > 0) {
-      content = this.splitLongParagraphs(content, strategy.maxParagraphLength);
-    }
-    const summaryBox = strategy.addSummaryBoxes ? `<div class="nc-summary-box"><strong>Quick Summary:</strong> ${this.escapeHtml(section.title)}</div>` : "";
-    const htmlContent = this.markdownToHtml(content);
-    const divider = strategy.insertDividers ? '<hr class="nc-divider">' : "";
-    return `
-    ${divider}
-    <section class="nc-section nc-section-${section.type}" data-section-id="${section.id}">
-      <div class="nc-section-header">
-        ${strategy.addCheckboxes ? `<input type="checkbox" class="nc-checkbox" data-section-id="${section.id}">` : ""}
-        <h2>${this.escapeHtml(section.title)}</h2>
-        <button class="nc-help-btn" data-section-id="${section.id}" title="Get help">?</button>
-      </div>
-      ${summaryBox}
-      <div class="nc-section-body">${htmlContent}</div>
-    </section>`;
-  }
-  /**
-   * Convert Markdown to HTML using marked.
-   */
-  markdownToHtml(markdown) {
-    try {
-      const mathBlocks = [];
-      const protected_ = markdown.replace(/\$\$([\s\S]*?)\$\$/g, (_2, inner) => {
-        mathBlocks.push(`$$${inner}$$`);
-        return `%%MATH_BLOCK_${mathBlocks.length - 1}%%`;
-      }).replace(/\$([^\n$]+?)\$/g, (_2, inner) => {
-        mathBlocks.push(`$${inner}$`);
-        return `%%MATH_BLOCK_${mathBlocks.length - 1}%%`;
-      });
-      const result = marked.parse(protected_);
-      const html2 = typeof result === "string" ? result : String(result);
-      return html2.replace(/%%MATH_BLOCK_(\d+)%%/g, (_2, i2) => mathBlocks[Number(i2)]);
-    } catch {
-      return `<p>${this.escapeHtml(markdown)}</p>`;
-    }
-  }
-  /**
-   * Split paragraphs that exceed max length.
-   */
-  splitLongParagraphs(text, maxLength) {
-    return text.replace(
-      new RegExp(`(.{${maxLength},}?[.!?])\\s`, "g"),
-      "$1\n\n"
-    );
-  }
-  escapeHtml(text) {
-    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
-  getActionIcon(type) {
-    const icons = {
-      break: "\u23F8\uFE0F",
-      simplify: "\u{1F4DD}",
-      example: "\u{1F4A1}",
-      hint: "\u{1F50D}",
-      encouragement: "\u{1F31F}",
-      restructure: "\u{1F504}"
-    };
-    return icons[type] ?? "\u2139\uFE0F";
-  }
-};
+// src/features/adaptive/styles.ts
 var BASE_CSS = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -37285,10 +36887,460 @@ var PROFILE_CSS = `
   .nc-profile-adhd .nc-section { box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
   .nc-profile-adhd .nc-section-header h2 { color: var(--nc-accent-color); }
 `;
+var LOADING_CSS = `
+  #nc-loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 9999;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.2em;
+  }
+  #nc-loading-overlay .nc-spinner {
+    width: 48px; height: 48px;
+    border: 5px solid rgba(255,255,255,0.25);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: nc-spin 0.9s linear infinite;
+  }
+  #nc-loading-overlay .nc-loading-label {
+    color: #fff;
+    font-size: 1.05em;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-align: center;
+    max-width: 280px;
+  }
+  #nc-loading-overlay .nc-loading-sub {
+    color: rgba(255,255,255,0.7);
+    font-size: 0.85em;
+    text-align: center;
+    max-width: 260px;
+  }
+  @keyframes nc-spin { to { transform: rotate(360deg); } }
+`;
+
+// src/features/adaptive/SectionRendererRegistry.ts
+var renderers = [];
+var SectionRendererRegistry = {
+  /**
+   * Register a custom section renderer.
+   * Renderers are checked in registration order; first match wins.
+   */
+  register(renderer) {
+    renderers.push(renderer);
+  },
+  /**
+   * Find a renderer for the given section.
+   * Returns undefined if no custom renderer matches.
+   */
+  find(section) {
+    return renderers.find((r2) => r2.canRender(section));
+  },
+  /**
+   * Clear all registrations (useful for testing).
+   */
+  clear() {
+    renderers.length = 0;
+  },
+  /**
+   * Get the number of registered renderers.
+   */
+  get count() {
+    return renderers.length;
+  }
+};
+var defaultSectionRenderer = {
+  canRender(_section) {
+    return true;
+  },
+  renderOriginal(section, strategy, helpers) {
+    let content = section.content;
+    if (strategy.maxParagraphLength > 0) {
+      content = helpers.splitLongParagraphs(content, strategy.maxParagraphLength);
+    }
+    const summaryBox = strategy.addSummaryBoxes ? `<div class="nc-summary-box"><strong>Quick Summary:</strong> ${helpers.escapeHtml(section.title)}</div>` : "";
+    const htmlContent = helpers.markdownToHtml(content);
+    const divider = strategy.insertDividers ? '<hr class="nc-divider">' : "";
+    return `
+    ${divider}
+    <section class="nc-section nc-section-${section.type}" data-section-id="${section.id}">
+      <div class="nc-section-header">
+        ${strategy.addCheckboxes ? `<input type="checkbox" class="nc-checkbox" data-section-id="${section.id}">` : ""}
+        <h2>${helpers.escapeHtml(section.title)}</h2>
+        <button class="nc-help-btn" data-section-id="${section.id}" title="Get help">?</button>
+      </div>
+      ${summaryBox}
+      <div class="nc-section-body">${htmlContent}</div>
+    </section>`;
+  },
+  renderAdapted(adapted, original, strategy, helpers) {
+    const content = helpers.markdownToHtml(adapted.adaptedContent);
+    const divider = strategy.insertDividers ? '<hr class="nc-divider">' : "";
+    return `
+    ${divider}
+    <section class="nc-section nc-section-${original.type}" data-section-id="${original.id}">
+      <div class="nc-section-header">
+        ${strategy.addCheckboxes ? `<input type="checkbox" class="nc-checkbox" data-section-id="${original.id}">` : ""}
+        <h2>${helpers.escapeHtml(adapted.adaptedTitle)}</h2>
+        <button class="nc-help-btn" data-section-id="${original.id}" title="Get help">?</button>
+      </div>
+      <div class="nc-section-body">${content}</div>
+      ${adapted.structuralChanges.length > 0 ? `<div class="nc-adaptations-note">
+            <small>Adaptations: ${adapted.structuralChanges.join(", ")}</small>
+          </div>` : ""}
+    </section>`;
+  }
+};
+
+// src/features/adaptive/AdaptiveRenderer.ts
+var AdaptiveRenderer = class {
+  /**
+   * RenderHelpers instance — exposed for custom section renderers and testing.
+   */
+  helpers = {
+    escapeHtml: this.escapeHtml.bind(this),
+    markdownToHtml: this.markdownToHtml.bind(this),
+    splitLongParagraphs: this.splitLongParagraphs.bind(this)
+  };
+  /**
+   * Render a full adaptive view of an assignment.
+   */
+  render(assignment, preferences, adaptation, requestType = "full_adaptation") {
+    const strategy = buildStrategy(preferences);
+    const cssVars = Object.entries(strategy.cssVariables).map(([k2, v2]) => `${k2}: ${v2};`).join("\n      ");
+    const classes = strategy.containerClasses.join(" ");
+    const sectionsHtml = assignment.sections.map((section) => {
+      const adapted = adaptation?.adaptedSections.find(
+        (a2) => a2.originalSectionId === section.id
+      );
+      return this.renderSection(section, adapted, strategy);
+    }).join("\n");
+    const supportHtml = adaptation?.supportMessage ? `<div class="nc-support-message">${this.escapeHtml(adaptation.supportMessage)}</div>` : "";
+    const actionsHtml = requestType === "help_request" && adaptation?.suggestedActions?.length ? `<div class="nc-actions">
+          ${adaptation.suggestedActions.map(
+      (a2) => `<div class="nc-action nc-action-${a2.priority}">
+                  <span class="nc-action-icon">${this.getActionIcon(a2.type)}</span>
+                  <span>${this.escapeHtml(a2.message)}</span>
+                </div>`
+    ).join("\n")}
+        </div>` : "";
+    const reasoningHtml = adaptation?.reasoning ? `<details class="nc-reasoning">
+          <summary>Why these adaptations?</summary>
+          <p>${this.escapeHtml(adaptation.reasoning)}</p>
+          <p class="nc-confidence">Confidence: ${Math.round((adaptation.confidenceScore ?? 0) * 100)}%</p>
+        </details>` : "";
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${this.escapeHtml(assignment.metadata.title)}</title>
+  <style>${LOADING_CSS}</style>
+  <!-- KaTeX for LaTeX formula rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false},
+        {left: '\\\\\\\\(', right: '\\\\\\\\)', display: false},
+        {left: '\\\\\\\\[', right: '\\\\\\\\]', display: true}
+      ],
+      throwOnError: false
+    });">
+  </script>
+  <style>
+    :root {
+      ${cssVars}
+    }
+    ${BASE_CSS}
+    ${PROFILE_CSS}
+  </style>
+</head>
+<body>
+  <!-- Loading overlay -->
+  <div id="nc-loading-overlay">
+    <div class="nc-spinner"></div>
+    <div class="nc-loading-label">Adapting content for you...</div>
+    <div class="nc-loading-sub">Generating a personalised view with AI. This may take a few seconds.</div>
+  </div>
+
+  <div class="nc-container ${classes}">
+    <header class="nc-header">
+      <h1>${this.escapeHtml(assignment.metadata.title)}</h1>
+      <div class="nc-meta">
+        <span class="nc-badge nc-difficulty-${assignment.metadata.difficulty}">
+          ${assignment.metadata.difficulty}
+        </span>
+        <span class="nc-badge">${assignment.metadata.language}</span>
+        ${strategy.showTimeEstimates ? `<span class="nc-badge nc-time">~${assignment.metadata.estimatedMinutes} min</span>` : ""}
+      </div>
+      ${assignment.metadata.description ? `<p class="nc-description">${this.escapeHtml(assignment.metadata.description)}</p>` : ""}
+    </header>
+
+    ${supportHtml}
+    ${actionsHtml}
+
+    <main class="nc-content">
+      ${sectionsHtml}
+    </main>
+
+    ${reasoningHtml}
+
+    <footer class="nc-footer">
+      <p>Adapted for <strong>${preferences.neurodiversityType}</strong> profile by NeuroCode Adapter</p>
+    </footer>
+  </div>
+
+  <script>
+    const vscode = acquireVsCodeApi();
+
+    window.addEventListener('message', (event) => {
+      const msg = event.data;
+      if (msg.type === 'adaptation_progress') {
+        const overlay = document.getElementById('nc-loading-overlay');
+        if (!overlay) { return; }
+        if (msg.status === 'started') {
+          overlay.style.display = 'flex';
+        } else {
+          overlay.style.display = 'none';
+        }
+      }
+    });
+
+    document.querySelectorAll('.nc-section').forEach(section => {
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            vscode.postMessage({
+              type: 'section_viewed',
+              sectionId: section.dataset.sectionId
+            });
+          }
+        });
+      }, { threshold: 0.5 });
+      observer.observe(section);
+    });
+
+    document.querySelectorAll('.nc-checkbox').forEach(cb => {
+      cb.addEventListener('change', () => {
+        vscode.postMessage({
+          type: 'section_viewed',
+          sectionId: cb.dataset.sectionId
+        });
+      });
+    });
+
+    document.querySelectorAll('.nc-help-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        vscode.postMessage({
+          type: 'request_help',
+          question: 'I need help with this section',
+          sectionId: btn.dataset.sectionId
+        });
+      });
+    });
+  </script>
+</body>
+</html>`;
+  }
+  // ─── Section rendering (delegates to SectionRendererRegistry) ────────────
+  /**
+   * Render a single section, delegating to a custom renderer if registered.
+   */
+  renderSection(section, adapted, strategy) {
+    const customRenderer = SectionRendererRegistry.find(section);
+    const renderer = customRenderer ?? defaultSectionRenderer;
+    if (adapted) {
+      return renderer.renderAdapted(adapted, section, strategy, this.helpers);
+    }
+    return renderer.renderOriginal(section, strategy, this.helpers);
+  }
+  // ─── Public utility methods (for testing and custom renderers) ────────────
+  /**
+   * Convert Markdown to HTML using marked.
+   * Protects LaTeX math blocks from being mangled by the Markdown parser.
+   */
+  markdownToHtml(markdown) {
+    try {
+      const mathBlocks = [];
+      const protected_ = markdown.replace(/\$\$([\s\S]*?)\$\$/g, (_2, inner) => {
+        mathBlocks.push(`$$${inner}$$`);
+        return `%%MATH_BLOCK_${mathBlocks.length - 1}%%`;
+      }).replace(/\$([^\n$]+?)\$/g, (_2, inner) => {
+        mathBlocks.push(`$${inner}$`);
+        return `%%MATH_BLOCK_${mathBlocks.length - 1}%%`;
+      });
+      const result = marked.parse(protected_);
+      const html2 = typeof result === "string" ? result : String(result);
+      return html2.replace(/%%MATH_BLOCK_(\d+)%%/g, (_2, i2) => mathBlocks[Number(i2)]);
+    } catch {
+      return `<p>${this.escapeHtml(markdown)}</p>`;
+    }
+  }
+  /**
+   * Split paragraphs that exceed max length.
+   */
+  splitLongParagraphs(text, maxLength) {
+    return text.replace(
+      new RegExp(`(.{${maxLength},}?[.!?])\\s`, "g"),
+      "$1\n\n"
+    );
+  }
+  /**
+   * Escape HTML entities.
+   */
+  escapeHtml(text) {
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  getActionIcon(type) {
+    const icons = {
+      break: "\u23F8\uFE0F",
+      simplify: "\u{1F4DD}",
+      example: "\u{1F4A1}",
+      hint: "\u{1F50D}",
+      encouragement: "\u{1F31F}",
+      restructure: "\u{1F504}"
+    };
+    return icons[type] ?? "\u2139\uFE0F";
+  }
+};
 
 // src/features/scaffold/ScaffoldEngine.ts
-var vscode4 = __toESM(require("vscode"));
-var path3 = __toESM(require("path"));
+var vscode6 = __toESM(require("vscode"));
+
+// src/features/scaffold/ScaffoldToolRegistry.ts
+var tools = /* @__PURE__ */ new Map();
+var ScaffoldToolRegistry = {
+  /**
+   * Register a tool. Overwrites any existing tool with the same name.
+   */
+  register(tool) {
+    tools.set(tool.name, tool);
+  },
+  /**
+   * Look up a tool by name. Returns undefined if not found.
+   */
+  get(name) {
+    return tools.get(name);
+  },
+  /**
+   * Get all registered tools.
+   */
+  getAll() {
+    return [...tools.values()];
+  },
+  /**
+   * Get all tool names.
+   */
+  getNames() {
+    return [...tools.keys()];
+  },
+  /**
+   * Build the Anthropic API tool array for the LLM.
+   * Optionally injects description hints (e.g. language-specific commands).
+   *
+   * @param hintsByTool - Map of tool name → string[] hints to append to description
+   */
+  buildAnthropicTools(hintsByTool) {
+    return [...tools.values()].map((tool) => {
+      const hints = hintsByTool?.get(tool.name);
+      return {
+        name: tool.name,
+        description: tool.description(hints),
+        input_schema: tool.inputSchema
+      };
+    });
+  },
+  /**
+   * Collect prompt fragments from all registered tools.
+   * Used to inject tool-specific guidance into the system prompt.
+   */
+  buildPromptFragments() {
+    return [...tools.values()].filter((t2) => t2.promptFragment).map((t2) => t2.promptFragment).join("\n");
+  },
+  /**
+   * Clear all registrations (useful for testing).
+   */
+  clear() {
+    tools.clear();
+  },
+  /**
+   * Number of registered tools.
+   */
+  get count() {
+    return tools.size;
+  }
+};
+
+// src/features/scaffold/ScaffoldToolBuilder.ts
+var LANGUAGE_HINTS = /* @__PURE__ */ new Map([
+  ["typescript", "Use `npm create vite@latest -- --template vanilla-ts` or `npx create-react-app --template typescript`."],
+  ["javascript", "Use `npm create vite@latest -- --template vanilla` or `npx create-react-app`."],
+  ["python", "Use `python3 -m venv .venv` on Linux/macOS or `python -m venv .venv` on Windows, then activate and pip install."],
+  ["csharp", "Use `dotnet new <template>` (console / webapi / mvc / xunit etc.)."],
+  ["java", "Use `mvn archetype:generate -DinteractiveMode=false` or `gradle init --type java-application`."],
+  ["rust", "Use `cargo init` or `cargo new <n>`."],
+  ["go", "Use `go mod init <module>` then create main.go."],
+  ["cpp", "Create CMakeLists.txt + src/main.cpp structure."]
+]);
+var TAG_HINTS = /* @__PURE__ */ new Map([
+  ["react", "Bootstrap with `npm create vite@latest -- --template react-ts` (TypeScript) or `--template react`."],
+  ["vue", "Bootstrap with `npm create vite@latest -- --template vue-ts`."],
+  ["express", "Use `npm init -y && npm install express`."],
+  ["fastapi", "Use `pip install fastapi uvicorn` and create main.py with a starter FastAPI app."],
+  ["django", "Use `django-admin startproject <n> .`."],
+  ["flask", "Use `pip install flask` and create app.py."],
+  ["nextjs", "Use `npx create-next-app@latest --ts --no-git`."],
+  ["jest", "Add `npm install --save-dev jest @types/jest ts-jest`."],
+  ["pytest", "Add `pip install pytest`."]
+]);
+function buildToolsForAssignment(assignment) {
+  const lang = assignment.metadata.language?.toLowerCase() ?? "";
+  const tags = (assignment.metadata.tags ?? []).map((t2) => t2.toLowerCase());
+  const hints = [];
+  const langHint = LANGUAGE_HINTS.get(lang);
+  if (langHint) {
+    hints.push(langHint);
+  }
+  for (const tag2 of tags) {
+    const tagHint = TAG_HINTS.get(tag2);
+    if (tagHint) {
+      hints.push(tagHint);
+    }
+  }
+  const hintsByTool = /* @__PURE__ */ new Map();
+  if (hints.length > 0) {
+    hintsByTool.set("execute_command", hints);
+  }
+  const tools2 = ScaffoldToolRegistry.buildAnthropicTools(hintsByTool);
+  const systemHint = buildSystemHint(assignment, lang, tags, hints);
+  return { tools: tools2, systemHint };
+}
+function buildSystemHint(assignment, lang, tags, hints) {
+  const lines = [
+    `Assignment: "${assignment.metadata.title}"`,
+    `Language: ${lang || "not specified"}`,
+    tags.length > 0 ? `Tags/frameworks: ${tags.join(", ")}` : "",
+    `Difficulty: ${assignment.metadata.difficulty}`,
+    `Estimated time: ${assignment.metadata.estimatedMinutes} minutes`,
+    "",
+    "Your task is to scaffold a starter project for this assignment using the tools provided.",
+    `Available tools: ${ScaffoldToolRegistry.getNames().join(", ")}`,
+    "Rules:",
+    "1. Keep commands non-interactive (pass --yes, -y, or equivalent flags).",
+    "2. Prefer minimal, correct scaffolding over feature-rich boilerplate.",
+    hints.length > 0 ? `
+Preferred tooling hints:
+${hints.map((h2) => `- ${h2}`).join("\n")}` : ""
+  ];
+  return lines.filter(Boolean).join("\n");
+}
 
 // src/features/scaffold/CommandExecutor.ts
 var vscode3 = __toESM(require("vscode"));
@@ -37316,17 +37368,17 @@ var CommandExecutor = class {
     for await (const chunk of execution.read()) {
       outputChunks.push(chunk);
     }
-    const exitCode = await new Promise((resolve2) => {
+    const exitCode = await new Promise((resolve3) => {
       const timer = setTimeout(() => {
         disposable.dispose();
         Logger.warn(`[CommandExecutor] Command timed out (120s): ${command}`);
-        resolve2(1);
+        resolve3(1);
       }, 12e4);
       const disposable = vscode3.window.onDidEndTerminalShellExecution((e2) => {
         if (e2.execution === execution) {
           clearTimeout(timer);
           disposable.dispose();
-          resolve2(e2.exitCode ?? 0);
+          resolve3(e2.exitCode ?? 0);
         }
       });
     });
@@ -37362,11 +37414,24 @@ var CommandExecutor = class {
   }
 };
 
-// src/features/scaffold/ScaffoldToolBuilder.ts
-var EXECUTE_COMMAND_TOOL = {
+// src/features/scaffold/tools/ExecuteCommandTool.ts
+var executor;
+function getExecutor() {
+  if (!executor) {
+    executor = new CommandExecutor();
+  }
+  return executor;
+}
+var ExecuteCommandTool = {
   name: "execute_command",
-  description: "Run a shell command to scaffold the project (e.g. create-react-app, dotnet new, cargo init). Always prefer official project-creation CLIs. Keep commands non-interactive (use --yes / -y flags). Each command call must do one logical step only. NEVER use `cd` as a standalone command \u2014 use the `cwd` parameter instead to set the working directory.",
-  input_schema: {
+  description(hints) {
+    const base = "Run a shell command to scaffold the project (e.g. create-react-app, dotnet new, cargo init). Always prefer official project-creation CLIs. Keep commands non-interactive (use --yes / -y flags). Each command call must do one logical step only. NEVER use `cd` as a standalone command \u2014 use the `cwd` parameter instead to set the working directory.";
+    if (hints && hints.length > 0) {
+      return base + "\n\nPreferred commands for this assignment:\n" + hints.map((h2) => `- ${h2}`).join("\n");
+    }
+    return base;
+  },
+  inputSchema: {
     type: "object",
     properties: {
       command: {
@@ -37383,12 +37448,55 @@ var EXECUTE_COMMAND_TOOL = {
       }
     },
     required: ["command", "description"]
+  },
+  requiresApproval: true,
+  isReadOnly: false,
+  promptFragment: "- Use execute_command for CLI scaffolding steps.\n- NEVER use `cd` as a standalone command. Use the `cwd` parameter of execute_command instead.\n- NEVER retry a command that already returned exit code 0 \u2014 treat it as done.\n- 'Requirement already satisfied' means the package IS installed \u2014 do NOT install it again.",
+  async call(input, context) {
+    const { command, cwd: relativeCwd, description } = input;
+    const path5 = require("path");
+    const resolvedCwd = relativeCwd ? path5.resolve(context.workspaceRoot, relativeCwd) : context.workspaceRoot;
+    context.onProgress(`Requesting approval: ${description ?? command}`, false);
+    const approved = await context.requestApproval(
+      `Run command: \`${command}\``,
+      `Directory: ${resolvedCwd}
+
+${description ?? ""}`
+    );
+    if (!approved) {
+      return { toolUseId: context.toolUseId, success: false, output: "", error: "User rejected command." };
+    }
+    context.onProgress(`Running: ${command}`, false);
+    try {
+      const { output, exitCode } = await getExecutor().execute(command, resolvedCwd);
+      if (exitCode !== 0) {
+        return { toolUseId: context.toolUseId, success: false, output, error: `Exit code ${exitCode}` };
+      }
+      return { toolUseId: context.toolUseId, success: true, output };
+    } catch (err) {
+      return {
+        toolUseId: context.toolUseId,
+        success: false,
+        output: "",
+        error: err instanceof Error ? err.message : String(err)
+      };
+    }
   }
 };
-var CREATE_FILE_TOOL = {
+function disposeExecutor() {
+  executor?.dispose();
+  executor = void 0;
+}
+
+// src/features/scaffold/tools/CreateFileTool.ts
+var vscode4 = __toESM(require("vscode"));
+var path3 = __toESM(require("path"));
+var CreateFileTool = {
   name: "create_file",
-  description: "Create or overwrite a file with the given content. Use this to add starter code, config files, or README. Prefer this over running echo/cat in execute_command.",
-  input_schema: {
+  description(_hints) {
+    return "Create or overwrite a file with the given content. Use this to add starter code, config files, or README. Prefer this over running echo/cat in execute_command.";
+  },
+  inputSchema: {
     type: "object",
     properties: {
       path: {
@@ -37405,12 +37513,46 @@ var CREATE_FILE_TOOL = {
       }
     },
     required: ["path", "content", "description"]
+  },
+  requiresApproval: true,
+  isReadOnly: false,
+  promptFragment: "- Use create_file to add or overwrite individual source files.\n- Once the environment is set up (venv created, packages installed), IMMEDIATELY move on to creating source files with create_file.",
+  async call(input, context) {
+    const { path: relativePath, content, description } = input;
+    const absolutePath = path3.resolve(context.workspaceRoot, relativePath);
+    context.onProgress(`Requesting approval: create ${relativePath}`, false);
+    const approved = await context.requestApproval(
+      `Create file: \`${relativePath}\``,
+      description ?? ""
+    );
+    if (!approved) {
+      return { toolUseId: context.toolUseId, success: false, output: "", error: "User rejected file creation." };
+    }
+    try {
+      const uri = vscode4.Uri.file(absolutePath);
+      await vscode4.workspace.fs.writeFile(uri, Buffer.from(content, "utf-8"));
+      context.onProgress(`Created: ${relativePath}`, false);
+      return { toolUseId: context.toolUseId, success: true, output: `File created: ${relativePath}` };
+    } catch (err) {
+      return {
+        toolUseId: context.toolUseId,
+        success: false,
+        output: "",
+        error: err instanceof Error ? err.message : String(err)
+      };
+    }
   }
 };
-var OPEN_IN_EDITOR_TOOL = {
+
+// src/features/scaffold/tools/OpenInEditorTool.ts
+var vscode5 = __toESM(require("vscode"));
+var path4 = __toESM(require("path"));
+var OpenInEditorTool = {
   name: "open_in_editor",
-  description: "Open a file in the VS Code editor after scaffolding is complete. Call this last, for the file the student should start editing.",
-  input_schema: {
+  description(_hints) {
+    return "Open a file in the VS Code editor after scaffolding is complete. Call this last, for the file the student should start editing.";
+  },
+  inputSchema: {
     type: "object",
     properties: {
       path: {
@@ -37419,87 +37561,41 @@ var OPEN_IN_EDITOR_TOOL = {
       }
     },
     required: ["path"]
-  }
-};
-var LANGUAGE_HINTS = {
-  typescript: "Use `npm create vite@latest -- --template vanilla-ts` or `npx create-react-app --template typescript`.",
-  javascript: "Use `npm create vite@latest -- --template vanilla` or `npx create-react-app`.",
-  python: "Use `python3 -m venv .venv` on Linux/macOS or `python -m venv .venv` on Windows, then activate and pip install.",
-  csharp: "Use `dotnet new <template>` (console / webapi / mvc / xunit etc.).",
-  java: "Use `mvn archetype:generate -DinteractiveMode=false` or `gradle init --type java-application`.",
-  rust: "Use `cargo init` or `cargo new <name>`.",
-  go: "Use `go mod init <module>` then create main.go.",
-  cpp: "Create CMakeLists.txt + src/main.cpp structure."
-};
-var TAG_HINTS = {
-  react: "Bootstrap with `npm create vite@latest -- --template react-ts` (TypeScript) or `--template react`.",
-  vue: "Bootstrap with `npm create vite@latest -- --template vue-ts`.",
-  express: "Use `npm init -y && npm install express`.",
-  fastapi: "Use `pip install fastapi uvicorn` and create main.py with a starter FastAPI app.",
-  django: "Use `django-admin startproject <name> .`.",
-  flask: "Use `pip install flask` and create app.py.",
-  nextjs: "Use `npx create-next-app@latest --ts --no-git`.",
-  jest: "Add `npm install --save-dev jest @types/jest ts-jest`.",
-  pytest: "Add `pip install pytest`."
-};
-function buildToolsForAssignment(assignment) {
-  const lang = assignment.metadata.language?.toLowerCase() ?? "";
-  const tags = (assignment.metadata.tags ?? []).map((t2) => t2.toLowerCase());
-  const hints = [];
-  const langHint = LANGUAGE_HINTS[lang];
-  if (langHint) {
-    hints.push(langHint);
-  }
-  for (const tag2 of tags) {
-    const tagHint = TAG_HINTS[tag2];
-    if (tagHint) {
-      hints.push(tagHint);
+  },
+  requiresApproval: false,
+  isReadOnly: true,
+  promptFragment: "- Use open_in_editor ONCE at the very end to open the main entry-point file.\n- After creating all files, call open_in_editor on the main entry file, then stop.",
+  async call(input, context) {
+    const { path: relativePath } = input;
+    const absolutePath = path4.resolve(context.workspaceRoot, relativePath);
+    try {
+      const doc = await vscode5.workspace.openTextDocument(vscode5.Uri.file(absolutePath));
+      await vscode5.window.showTextDocument(doc, vscode5.ViewColumn.One);
+      context.onProgress(`Opened: ${relativePath}`, false);
+      return { toolUseId: context.toolUseId, success: true, output: `Opened ${relativePath} in editor.` };
+    } catch (err) {
+      return {
+        toolUseId: context.toolUseId,
+        success: false,
+        output: "",
+        error: err instanceof Error ? err.message : String(err)
+      };
     }
   }
-  const patchedExecuteTool = hints.length > 0 ? {
-    ...EXECUTE_COMMAND_TOOL,
-    description: EXECUTE_COMMAND_TOOL.description + "\n\nPreferred commands for this assignment:\n" + hints.map((h2) => `- ${h2}`).join("\n")
-  } : EXECUTE_COMMAND_TOOL;
-  const tools = [
-    patchedExecuteTool,
-    CREATE_FILE_TOOL,
-    OPEN_IN_EDITOR_TOOL
-  ];
-  const systemHint = buildSystemHint(assignment, lang, tags, hints);
-  return { tools, systemHint };
-}
-function buildSystemHint(assignment, lang, tags, hints) {
-  const lines = [
-    `Assignment: "${assignment.metadata.title}"`,
-    `Language: ${lang || "not specified"}`,
-    tags.length > 0 ? `Tags/frameworks: ${tags.join(", ")}` : "",
-    `Difficulty: ${assignment.metadata.difficulty}`,
-    `Estimated time: ${assignment.metadata.estimatedMinutes} minutes`,
-    "",
-    "Your task is to scaffold a starter project for this assignment using the tools provided.",
-    "Rules:",
-    "1. Use execute_command for CLI scaffolding steps.",
-    "2. Use create_file to add or overwrite individual source files.",
-    "3. Use open_in_editor ONCE at the very end to open the main entry-point file.",
-    "4. Keep commands non-interactive (pass --yes, -y, or equivalent flags).",
-    "5. Prefer minimal, correct scaffolding over feature-rich boilerplate.",
-    "6. When done, call open_in_editor on the file the student should start editing.",
-    hints.length > 0 ? `
-Preferred tooling hints:
-${hints.map((h2) => `- ${h2}`).join("\n")}` : ""
-  ];
-  return lines.filter(Boolean).join("\n");
+};
+
+// src/features/scaffold/tools/index.ts
+function registerBuiltinTools() {
+  ScaffoldToolRegistry.register(ExecuteCommandTool);
+  ScaffoldToolRegistry.register(CreateFileTool);
+  ScaffoldToolRegistry.register(OpenInEditorTool);
 }
 
 // src/features/scaffold/ScaffoldEngine.ts
 var MAX_ITERATIONS = 20;
 var ScaffoldEngine = class {
   anthropic;
-  executor;
   inProgress = false;
-  constructor() {
-    this.executor = new CommandExecutor();
-  }
   setApiKey(apiKey) {
     this.anthropic = new sdk_default({ apiKey });
   }
@@ -37508,8 +37604,6 @@ var ScaffoldEngine = class {
   }
   /**
    * Run the scaffolding agentic loop.
-   * Sends the assignment context + tools to Claude, then executes each
-   * tool_use block (with user approval) until Claude signals end_turn.
    */
   async run(request, onProgress) {
     if (!this.anthropic) {
@@ -37526,18 +37620,15 @@ var ScaffoldEngine = class {
     }
   }
   async agenticLoop(request, onProgress) {
-    const { tools, systemHint } = buildToolsForAssignment(request.assignment);
+    const { tools: tools2, systemHint } = buildToolsForAssignment(request.assignment);
+    const toolPrompts = ScaffoldToolRegistry.buildPromptFragments();
     const systemPrompt = [
       "You are NeuroCode Scaffold, a programming tutor assistant that creates project skeletons for students.",
       systemHint,
       "",
       "Think step by step. Use tools one at a time. Do not explain yourself \u2014 just call tools.",
       "Rules for the agentic loop:",
-      "- NEVER use `cd` as a standalone command. Use the `cwd` parameter of execute_command instead.",
-      "- NEVER retry a command that already returned exit code 0 \u2014 treat it as done.",
-      "- 'Requirement already satisfied' means the package IS installed \u2014 do NOT install it again.",
-      "- Once the environment is set up (venv created, packages installed), IMMEDIATELY move on to creating source files with create_file.",
-      "- After creating all files, call open_in_editor on the main entry file, then stop."
+      toolPrompts
     ].join("\n");
     const userMessage = buildScaffoldPrompt(request);
     const messages = [
@@ -37549,7 +37640,7 @@ var ScaffoldEngine = class {
         model: "claude-sonnet-4-20250514",
         max_tokens: 4096,
         system: systemPrompt,
-        tools,
+        tools: tools2,
         messages
       });
       Logger.log(`[ScaffoldEngine] Iteration ${i2 + 1}, stop_reason: ${response.stop_reason}`);
@@ -37577,93 +37668,33 @@ var ScaffoldEngine = class {
     }
   }
   /**
-   * Dispatch a single tool_use block to the correct handler.
-   * Every tool call shows a VS Code confirmation dialog first.
+   * Dispatch a tool_use block via ScaffoldToolRegistry.
+   *
+   * REFACTORED: No more switch(block.name). The registry does the lookup.
+   * Unknown tools return a structured error that the LLM can recover from.
    */
   async executeTool(block2, workspaceRoot, onProgress) {
+    const tool = ScaffoldToolRegistry.get(block2.name);
+    if (!tool) {
+      return {
+        toolUseId: block2.id,
+        success: false,
+        output: "",
+        error: `Unknown tool: ${block2.name}. Available: ${ScaffoldToolRegistry.getNames().join(", ")}`
+      };
+    }
+    const context = {
+      toolUseId: block2.id,
+      workspaceRoot,
+      onProgress,
+      requestApproval: (title, detail) => this.requestApproval(title, detail)
+    };
     const input = block2.input;
-    switch (block2.name) {
-      case "execute_command":
-        return this.handleExecuteCommand(block2.id, input, workspaceRoot, onProgress);
-      case "create_file":
-        return this.handleCreateFile(block2.id, input, workspaceRoot, onProgress);
-      case "open_in_editor":
-        return this.handleOpenInEditor(block2.id, input, workspaceRoot, onProgress);
-      default:
-        return {
-          toolUseId: block2.id,
-          success: false,
-          output: "",
-          error: `Unknown tool: ${block2.name}`
-        };
-    }
-  }
-  // ─── Tool Handlers ──────────────────────────────────────────────────────────
-  async handleExecuteCommand(toolUseId, input, workspaceRoot, onProgress) {
-    const { command, cwd: relativeCwd, description } = input;
-    const resolvedCwd = relativeCwd ? path3.resolve(workspaceRoot, relativeCwd) : workspaceRoot;
-    onProgress(`Requesting approval: ${description ?? command}`, false);
-    const approved = await this.requestApproval(
-      `Run command: \`${command}\``,
-      `Directory: ${resolvedCwd}
-
-${description ?? ""}`
-    );
-    if (!approved) {
-      return { toolUseId, success: false, output: "", error: "User rejected command." };
-    }
-    onProgress(`Running: ${command}`, false);
     try {
-      const { output, exitCode } = await this.executor.execute(command, resolvedCwd);
-      if (exitCode !== 0) {
-        return { toolUseId, success: false, output, error: `Exit code ${exitCode}` };
-      }
-      return { toolUseId, success: true, output };
+      return await tool.call(input, context);
     } catch (err) {
       return {
-        toolUseId,
-        success: false,
-        output: "",
-        error: err instanceof Error ? err.message : String(err)
-      };
-    }
-  }
-  async handleCreateFile(toolUseId, input, workspaceRoot, onProgress) {
-    const { path: relativePath, content, description } = input;
-    const absolutePath = path3.resolve(workspaceRoot, relativePath);
-    onProgress(`Requesting approval: create ${relativePath}`, false);
-    const approved = await this.requestApproval(
-      `Create file: \`${relativePath}\``,
-      description ?? ""
-    );
-    if (!approved) {
-      return { toolUseId, success: false, output: "", error: "User rejected file creation." };
-    }
-    try {
-      const uri = vscode4.Uri.file(absolutePath);
-      await vscode4.workspace.fs.writeFile(uri, Buffer.from(content, "utf-8"));
-      onProgress(`Created: ${relativePath}`, false);
-      return { toolUseId, success: true, output: `File created: ${relativePath}` };
-    } catch (err) {
-      return {
-        toolUseId,
-        success: false,
-        output: "",
-        error: err instanceof Error ? err.message : String(err)
-      };
-    }
-  }
-  async handleOpenInEditor(toolUseId, input, workspaceRoot, onProgress) {
-    const { path: relativePath } = input;
-    const absolutePath = path3.resolve(workspaceRoot, relativePath);
-    try {
-      const doc = await vscode4.workspace.openTextDocument(vscode4.Uri.file(absolutePath));
-      await vscode4.window.showTextDocument(doc, vscode4.ViewColumn.One);
-      onProgress(`Opened: ${relativePath}`, false);
-      return { toolUseId, success: true, output: `Opened ${relativePath} in editor.` };
-    } catch (err) {
-      return {
-        toolUseId,
+        toolUseId: block2.id,
         success: false,
         output: "",
         error: err instanceof Error ? err.message : String(err)
@@ -37672,7 +37703,7 @@ ${description ?? ""}`
   }
   // ─── Helpers ────────────────────────────────────────────────────────────────
   async requestApproval(title, detail) {
-    const answer = await vscode4.window.showInformationMessage(
+    const answer = await vscode6.window.showInformationMessage(
       `NeuroCode Scaffold: ${title}`,
       { modal: true, detail },
       "Allow",
@@ -37681,7 +37712,7 @@ ${description ?? ""}`
     return answer === "Allow";
   }
   dispose() {
-    this.executor.dispose();
+    disposeExecutor();
   }
 };
 function buildScaffoldPrompt(request) {
@@ -37715,6 +37746,92 @@ function buildScaffoldPrompt(request) {
   return lines.join("\n");
 }
 
+// src/shared/MessageValidator.ts
+var MESSAGE_SCHEMAS = {
+  ready: {},
+  request_state: {},
+  open_assignment: {
+    filePath: { type: "string", required: false }
+  },
+  open_preferences: {},
+  request_help: {
+    question: { type: "string", required: false },
+    sectionId: { type: "string", required: false }
+  },
+  set_profile: {
+    profile: { type: "string", required: true }
+  },
+  section_viewed: {
+    sectionId: { type: "string", required: true }
+  },
+  export_progress: {},
+  connect_mcp: {
+    url: { type: "string", required: true },
+    transport: { type: "string", required: false }
+  },
+  disconnect_mcp: {},
+  request_scaffold: {},
+  apply_preferences: {
+    preferences: { type: "object", required: true }
+  },
+  scaffold_approval_response: {
+    toolUseId: { type: "string", required: true },
+    approved: { type: "boolean", required: true }
+  }
+};
+var ALLOWED_PROFILES = /* @__PURE__ */ new Set([
+  "neurotypical",
+  "dyslexia",
+  "autism",
+  "adhd"
+]);
+var ALLOWED_TRANSPORTS = /* @__PURE__ */ new Set(["stdio", "streamableHttp"]);
+function validateWebviewMessage(raw) {
+  const errors = [];
+  if (!raw || typeof raw !== "object") {
+    return { valid: false, errors: ["Message is not an object"], message: null };
+  }
+  const msg = raw;
+  if (typeof msg.type !== "string") {
+    return { valid: false, errors: ["Missing or invalid 'type' field"], message: null };
+  }
+  const type = msg.type;
+  const schema = MESSAGE_SCHEMAS[type];
+  if (!schema) {
+    return { valid: false, errors: [`Unknown message type: "${type}"`], message: null };
+  }
+  for (const [field, spec] of Object.entries(schema)) {
+    const value = msg[field];
+    if (spec.required && (value === void 0 || value === null)) {
+      errors.push(`Missing required field "${field}" for message type "${type}"`);
+      continue;
+    }
+    if (value !== void 0 && value !== null) {
+      const actualType = typeof value;
+      if (actualType !== spec.type) {
+        errors.push(
+          `Field "${field}" expected ${spec.type}, got ${actualType} for message type "${type}"`
+        );
+      }
+    }
+  }
+  if (type === "set_profile" && typeof msg.profile === "string") {
+    if (!ALLOWED_PROFILES.has(msg.profile)) {
+      errors.push(`Invalid profile "${msg.profile}". Allowed: ${[...ALLOWED_PROFILES].join(", ")}`);
+    }
+  }
+  if (type === "connect_mcp" && typeof msg.transport === "string") {
+    if (!ALLOWED_TRANSPORTS.has(msg.transport)) {
+      errors.push(`Invalid transport "${msg.transport}". Allowed: ${[...ALLOWED_TRANSPORTS].join(", ")}`);
+    }
+  }
+  if (errors.length > 0) {
+    Logger.warn(`Webview message validation failed for "${type}": ${errors.join("; ")}`);
+    return { valid: false, errors, message: null };
+  }
+  return { valid: true, errors: [], message: msg };
+}
+
 // src/core/controller/NeurocodeController.ts
 function createInitialState() {
   return {
@@ -37733,14 +37850,13 @@ var NeurocodeController = class {
   renderer;
   scaffoldEngine;
   webview;
+  configService;
   // ─── State (inspired by Cline's TaskState pattern) ──────────────
   adaptationState = createInitialState();
   currentAdaptation = null;
   // ─── Concurrency guards (inspired by Cline Controller line 427) ─
-  // Cline uses cancelInProgress flag to prevent duplicate cancellations
-  // from spam clicking. We use the same pattern for adaptation requests.
   adaptationInProgress = false;
-  constructor(context, webview) {
+  constructor(context, webview, configService) {
     this.mcpManager = new McpManager();
     this.adaptationEngine = new AdaptationEngine();
     this.preferenceManager = new PreferenceManager(context);
@@ -37748,20 +37864,32 @@ var NeurocodeController = class {
     this.renderer = new AdaptiveRenderer();
     this.scaffoldEngine = new ScaffoldEngine();
     this.webview = webview;
+    this.configService = configService;
     this.setupMcpCallbacks();
     this.setupPreferenceCallbacks();
     this.setupWebviewMessageRouter();
-    const config2 = vscode5.workspace.getConfiguration("neurocode");
-    const apiKey = config2.get("anthropicApiKey", "");
+    const apiKey = configService.apiKey;
     if (apiKey) {
-      this.adaptationEngine.setApiKey(apiKey);
-      this.assignmentManager.setApiKey(apiKey);
-      this.scaffoldEngine.setApiKey(apiKey);
+      this.propagateApiKey(apiKey);
     }
+    configService.onChange((config2, changed) => {
+      if (changed.has("anthropicApiKey")) {
+        this.propagateApiKey(config2.anthropicApiKey);
+      }
+    });
     this.adaptationEngine.setMcpManager(this.mcpManager);
     Logger.log("NeurocodeController initialized");
   }
   // ─── Setup Methods ──────────────────────────────────────────────
+  /**
+   * Propagate API key to all subsystems that need it.
+   * REFACTORED: Centralised here instead of scattered across constructor + onDidChangeConfiguration.
+   */
+  propagateApiKey(apiKey) {
+    this.adaptationEngine.setApiKey(apiKey);
+    this.assignmentManager.setApiKey(apiKey);
+    this.scaffoldEngine.setApiKey(apiKey);
+  }
   /**
    * Wire MCP status changes to webview notifications.
    * Also sets up the notification callback (borrowed from Cline Task, line 352-355):
@@ -37796,7 +37924,13 @@ var NeurocodeController = class {
    * handling of WebviewMessage types.
    */
   setupWebviewMessageRouter() {
-    this.webview.onMessage(async (message) => {
+    this.webview.onMessage(async (raw) => {
+      const validation = validateWebviewMessage(raw);
+      if (!validation.valid) {
+        Logger.warn(`Invalid webview message rejected: ${validation.errors.join("; ")}`);
+        return;
+      }
+      const message = validation.message;
       try {
         await this.handleWebviewMessage(message);
       } catch (error2) {
@@ -37877,9 +38011,9 @@ var NeurocodeController = class {
   async loadAssignment(filePath) {
     try {
       this.clearSession();
-      const assignment = await vscode5.window.withProgress(
+      const assignment = await vscode7.window.withProgress(
         {
-          location: vscode5.ProgressLocation.Notification,
+          location: vscode7.ProgressLocation.Notification,
           title: `NeuroCode: Loading ${filePath.split(/[/\\]/).pop()}...`,
           cancellable: false
         },
@@ -37888,13 +38022,13 @@ var NeurocodeController = class {
       this.webview.postMessage({ type: "assignment_loaded", assignment });
       await this.renderAdaptiveView(assignment);
       this.postStateToWebview();
-      vscode5.window.showInformationMessage(
+      vscode7.window.showInformationMessage(
         `NeuroCode: Loaded "${assignment.metadata.title}" (${assignment.sections.length} sections)`
       );
     } catch (error2) {
       const msg = error2 instanceof Error ? error2.message : String(error2);
       Logger.error("Failed to load assignment:", error2);
-      vscode5.window.showErrorMessage(`NeuroCode: Failed to load \u2014 ${msg}`);
+      vscode7.window.showErrorMessage(`NeuroCode: Failed to load \u2014 ${msg}`);
       this.webview.sendError("load_failed", msg);
     }
   }
@@ -37905,9 +38039,9 @@ var NeurocodeController = class {
   async promptAndLoadAssignment() {
     let assignment;
     try {
-      assignment = await vscode5.window.withProgress(
+      assignment = await vscode7.window.withProgress(
         {
-          location: vscode5.ProgressLocation.Notification,
+          location: vscode7.ProgressLocation.Notification,
           title: "NeuroCode: Loading assignment...",
           cancellable: false
         },
@@ -37923,7 +38057,7 @@ var NeurocodeController = class {
     } catch (error2) {
       const msg = error2 instanceof Error ? error2.message : String(error2);
       Logger.error("Failed to load assignment:", error2);
-      vscode5.window.showErrorMessage(`NeuroCode: Failed to load assignment \u2014 ${msg}`);
+      vscode7.window.showErrorMessage(`NeuroCode: Failed to load assignment \u2014 ${msg}`);
       this.webview.sendError("load_failed", msg);
       return;
     }
@@ -37934,7 +38068,7 @@ var NeurocodeController = class {
     this.webview.postMessage({ type: "assignment_loaded", assignment });
     await this.renderAdaptiveView(assignment);
     this.postStateToWebview();
-    vscode5.window.showInformationMessage(
+    vscode7.window.showInformationMessage(
       `NeuroCode: Loaded "${assignment.metadata.title}" (${assignment.sections.length} sections)`
     );
   }
@@ -38035,12 +38169,12 @@ var NeurocodeController = class {
   async exportProgress() {
     try {
       const report = await this.assignmentManager.exportProgress();
-      const uri = await vscode5.window.showSaveDialog({
-        defaultUri: vscode5.Uri.file("progress-report.json"),
+      const uri = await vscode7.window.showSaveDialog({
+        defaultUri: vscode7.Uri.file("progress-report.json"),
         filters: { "JSON Files": ["json"] }
       });
       if (uri) {
-        await vscode5.workspace.fs.writeFile(uri, Buffer.from(report, "utf-8"));
+        await vscode7.workspace.fs.writeFile(uri, Buffer.from(report, "utf-8"));
         this.webview.sendInfo("Progress exported successfully");
       }
     } catch (error2) {
@@ -38054,24 +38188,24 @@ var NeurocodeController = class {
   async requestScaffold() {
     const assignment = this.assignmentManager.getCurrentAssignment();
     if (!assignment) {
-      vscode5.window.showErrorMessage("NeuroCode: Load an assignment before scaffolding.");
+      vscode7.window.showErrorMessage("NeuroCode: Load an assignment before scaffolding.");
       return;
     }
     if (!this.scaffoldEngine.isAvailable) {
-      vscode5.window.showErrorMessage(
+      vscode7.window.showErrorMessage(
         "NeuroCode: Set neurocode.anthropicApiKey in settings to use scaffolding."
       );
       return;
     }
-    const workspaceFolders = vscode5.workspace.workspaceFolders;
+    const workspaceFolders = vscode7.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
-      vscode5.window.showErrorMessage("NeuroCode: Open a workspace folder before scaffolding.");
+      vscode7.window.showErrorMessage("NeuroCode: Open a workspace folder before scaffolding.");
       return;
     }
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
-    await vscode5.window.withProgress(
+    await vscode7.window.withProgress(
       {
-        location: vscode5.ProgressLocation.Notification,
+        location: vscode7.ProgressLocation.Notification,
         title: `NeuroCode: Scaffolding "${assignment.metadata.title}"...`,
         cancellable: false
       },
@@ -38087,13 +38221,13 @@ var NeurocodeController = class {
               });
             }
           );
-          vscode5.window.showInformationMessage(
+          vscode7.window.showInformationMessage(
             `NeuroCode: Project scaffold complete for "${assignment.metadata.title}"`
           );
         } catch (error2) {
           const msg = error2 instanceof Error ? error2.message : String(error2);
           Logger.error("Scaffold failed:", error2);
-          vscode5.window.showErrorMessage(`NeuroCode: Scaffold failed \u2014 ${msg}`);
+          vscode7.window.showErrorMessage(`NeuroCode: Scaffold failed \u2014 ${msg}`);
         }
       }
     );
@@ -38135,13 +38269,21 @@ var NeurocodeController = class {
   }
   // ─── Public API for Commands ────────────────────────────────────
   /**
+   * Public entry point for export progress command.
+   * REFACTORED: extension.ts command handler now delegates here,
+   * eliminating the duplicated save-dialog + writeFile logic.
+   */
+  async handleExportProgress() {
+    await this.exportProgress();
+  }
+  /**
    * Show the preferences configuration panel.
    */
   showPreferencesPanel() {
-    const panel = vscode5.window.createWebviewPanel(
+    const panel = vscode7.window.createWebviewPanel(
       "neurocodePreferences",
       "NeuroCode Preferences",
-      vscode5.ViewColumn.One,
+      vscode7.ViewColumn.One,
       { enableScripts: true }
     );
     panel.webview.html = this.wrapPreferencesHtml(
@@ -38199,41 +38341,457 @@ var NeurocodeController = class {
     this.adaptationEngine.dispose();
     this.preferenceManager.dispose();
     this.assignmentManager.dispose();
+    this.configService.dispose();
     this.webview.dispose();
     Logger.log("NeurocodeController disposed");
   }
 };
 
+// src/shared/ConfigService.ts
+var vscode8 = __toESM(require("vscode"));
+var ConfigService = class _ConfigService {
+  current;
+  callbacks = [];
+  disposables = [];
+  constructor() {
+    this.current = _ConfigService.readFromVscode();
+    this.disposables.push(
+      vscode8.workspace.onDidChangeConfiguration((e2) => {
+        if (e2.affectsConfiguration("neurocode")) {
+          const prev = this.current;
+          this.current = _ConfigService.readFromVscode();
+          const changed = _ConfigService.diffKeys(prev, this.current);
+          if (changed.size > 0) {
+            this.notifyAll(changed);
+          }
+        }
+      })
+    );
+  }
+  /**
+   * Get current config snapshot.
+   */
+  getConfig() {
+    return this.current;
+  }
+  /**
+   * Get the current API key (convenience shortcut).
+   */
+  get apiKey() {
+    return this.current.anthropicApiKey;
+  }
+  /**
+   * Subscribe to config changes.
+   * Callback receives the new config and the set of changed keys.
+   */
+  onChange(callback) {
+    this.callbacks.push(callback);
+  }
+  /**
+   * Read current config from VS Code settings.
+   */
+  static readFromVscode() {
+    const c2 = vscode8.workspace.getConfiguration("neurocode");
+    return {
+      anthropicApiKey: c2.get("anthropicApiKey", ""),
+      neurodiversityProfile: c2.get("neurodiversityProfile", "neurotypical"),
+      fontSize: c2.get("fontSize", 14),
+      fontFamily: c2.get("fontFamily", "default"),
+      lineSpacing: c2.get("lineSpacing", 1.5),
+      colorScheme: c2.get("colorScheme", "default"),
+      focusMode: c2.get("focusMode", false),
+      textToSpeech: c2.get("textToSpeech", false),
+      taskGranularity: c2.get("taskGranularity", "standard")
+    };
+  }
+  /**
+   * Diff two config objects and return the set of changed keys.
+   */
+  static diffKeys(a2, b2) {
+    const changed = /* @__PURE__ */ new Set();
+    for (const key of Object.keys(a2)) {
+      if (a2[key] !== b2[key]) {
+        changed.add(key);
+      }
+    }
+    return changed;
+  }
+  notifyAll(changed) {
+    Logger.log(`Config changed: ${[...changed].join(", ")}`);
+    for (const cb of this.callbacks) {
+      try {
+        cb(this.current, changed);
+      } catch (e2) {
+        Logger.error("ConfigService callback error:", e2);
+      }
+    }
+  }
+  dispose() {
+    this.disposables.forEach((d2) => d2.dispose());
+    this.callbacks = [];
+  }
+};
+
+// src/features/adaptive/builtinProfiles.ts
+function neurotypicalAdapter(section, _prefs) {
+  return {
+    originalSectionId: section.id,
+    adaptedTitle: section.title,
+    adaptedContent: section.content,
+    visualModifications: [],
+    structuralChanges: []
+  };
+}
+var neurotypicalModule = {
+  type: "neurotypical",
+  profile: {
+    type: "neurotypical",
+    label: "Neurotypical",
+    description: "Standard presentation with good readability and balanced structure.",
+    defaultPreferences: {
+      visual: {
+        colorScheme: "default",
+        fontSize: 14,
+        fontFamily: "default",
+        lineSpacing: 1.5,
+        letterSpacing: 0,
+        paragraphSpacing: 1,
+        maxLineWidth: 80
+      },
+      structural: {
+        chunkSize: "large",
+        progressiveDisclosure: false,
+        showStepNumbers: true,
+        showCheckboxes: false,
+        bulletStyle: "bullets",
+        sectionCollapsible: false,
+        taskGranularity: "standard"
+      },
+      cognitive: {
+        focusMode: false,
+        textToSpeech: false,
+        highlightCurrentStep: false,
+        showTimers: false,
+        breakReminders: false,
+        breakIntervalMinutes: 45,
+        simplifiedLanguage: false,
+        showExamples: true
+      }
+    }
+  },
+  strategy: {
+    cssVariables: {
+      "--nc-font-size": "14px",
+      "--nc-font-family": "'Segoe UI', system-ui, sans-serif",
+      "--nc-line-height": "1.5",
+      "--nc-letter-spacing": "0em",
+      "--nc-paragraph-spacing": "1em",
+      "--nc-max-width": "80ch",
+      "--nc-bg-color": "#ffffff",
+      "--nc-text-color": "#1f2937",
+      "--nc-heading-color": "#111827",
+      "--nc-accent-color": "#2563eb",
+      "--nc-border-radius": "6px",
+      "--nc-code-bg": "#f3f4f6"
+    },
+    containerClasses: ["nc-profile-neurotypical"],
+    collapseCodeBlocks: false,
+    addCheckboxes: false,
+    insertDividers: false,
+    addSummaryBoxes: false,
+    maxParagraphLength: 500,
+    showTimeEstimates: false
+  },
+  ruleBasedAdapter: neurotypicalAdapter,
+  promptFragment: `**Neurotypical:**
+- Standard presentation with good readability
+- Balanced structure and visual hierarchy
+- Clear but not over-simplified language`
+};
+var dyslexiaModule = {
+  type: "dyslexia",
+  profile: {
+    type: "dyslexia",
+    label: "Dyslexia",
+    description: "Optimized for reading ease: larger fonts, increased spacing, dyslexia-friendly typeface, shorter paragraphs, and visual anchors.",
+    defaultPreferences: {
+      visual: {
+        colorScheme: "warm",
+        fontSize: 16,
+        fontFamily: "OpenDyslexic",
+        lineSpacing: 2,
+        letterSpacing: 0.05,
+        paragraphSpacing: 1.5,
+        maxLineWidth: 65
+      },
+      structural: {
+        chunkSize: "small",
+        progressiveDisclosure: true,
+        showStepNumbers: true,
+        showCheckboxes: true,
+        bulletStyle: "numbers",
+        sectionCollapsible: true,
+        taskGranularity: "detailed"
+      },
+      cognitive: {
+        focusMode: false,
+        textToSpeech: true,
+        highlightCurrentStep: true,
+        showTimers: false,
+        breakReminders: false,
+        breakIntervalMinutes: 30,
+        simplifiedLanguage: true,
+        showExamples: true
+      }
+    }
+  },
+  strategy: {
+    cssVariables: {
+      "--nc-font-size": "16px",
+      "--nc-font-family": "'OpenDyslexic', 'Comic Sans MS', sans-serif",
+      "--nc-line-height": "2.0",
+      "--nc-letter-spacing": "0.05em",
+      "--nc-paragraph-spacing": "1.5em",
+      "--nc-max-width": "65ch",
+      "--nc-bg-color": "#fdf6e3",
+      "--nc-text-color": "#333",
+      "--nc-heading-color": "#2c3e50",
+      "--nc-accent-color": "#e67e22",
+      "--nc-border-radius": "8px",
+      "--nc-code-bg": "#fef9ef"
+    },
+    containerClasses: ["nc-profile-dyslexia"],
+    collapseCodeBlocks: false,
+    addCheckboxes: true,
+    insertDividers: true,
+    addSummaryBoxes: false,
+    maxParagraphLength: 200,
+    showTimeEstimates: false
+  },
+  ruleBasedAdapter(section, prefs) {
+    const content = section.content.replace(/(.{200,}?\.)\s/g, "$1\n\n");
+    const visualMods = [
+      { type: "font", target: "body", value: prefs.visual.fontFamily || "OpenDyslexic" },
+      { type: "spacing", target: "line-height", value: "1.8" },
+      { type: "spacing", target: "letter-spacing", value: "0.05em" }
+    ];
+    return {
+      originalSectionId: section.id,
+      adaptedTitle: section.title,
+      adaptedContent: content,
+      visualModifications: visualMods,
+      structuralChanges: ["Split long paragraphs", "Increased spacing"]
+    };
+  },
+  promptFragment: `**Dyslexia:**
+- Use shorter paragraphs and bullet points
+- Increase white space between sections
+- Avoid justified text alignment
+- Use sans-serif fonts, larger font sizes
+- Break complex instructions into numbered steps
+- Add visual separators between logical blocks
+- Use color coding for different types of information`
+};
+var autismModule = {
+  type: "autism",
+  profile: {
+    type: "autism",
+    label: "Autism Spectrum",
+    description: "Clear structure, precise language, consistent patterns, explicit expectations, and reduced sensory complexity.",
+    defaultPreferences: {
+      visual: {
+        colorScheme: "cool",
+        fontSize: 14,
+        fontFamily: "Atkinson Hyperlegible",
+        lineSpacing: 1.6,
+        letterSpacing: 0,
+        paragraphSpacing: 1.2,
+        maxLineWidth: 75
+      },
+      structural: {
+        chunkSize: "medium",
+        progressiveDisclosure: false,
+        showStepNumbers: true,
+        showCheckboxes: true,
+        bulletStyle: "numbers",
+        sectionCollapsible: false,
+        taskGranularity: "detailed"
+      },
+      cognitive: {
+        focusMode: true,
+        textToSpeech: false,
+        highlightCurrentStep: true,
+        showTimers: true,
+        breakReminders: false,
+        breakIntervalMinutes: 40,
+        simplifiedLanguage: false,
+        showExamples: true
+      }
+    }
+  },
+  strategy: {
+    cssVariables: {
+      "--nc-font-size": "14px",
+      "--nc-font-family": "'Atkinson Hyperlegible', 'Segoe UI', sans-serif",
+      "--nc-line-height": "1.6",
+      "--nc-letter-spacing": "0em",
+      "--nc-paragraph-spacing": "1.2em",
+      "--nc-max-width": "75ch",
+      "--nc-bg-color": "#f0f4f8",
+      "--nc-text-color": "#2d3748",
+      "--nc-heading-color": "#1a365d",
+      "--nc-accent-color": "#3182ce",
+      "--nc-border-radius": "4px",
+      "--nc-code-bg": "#edf2f7"
+    },
+    containerClasses: ["nc-profile-autism"],
+    collapseCodeBlocks: false,
+    addCheckboxes: true,
+    insertDividers: true,
+    addSummaryBoxes: false,
+    maxParagraphLength: 400,
+    showTimeEstimates: true
+  },
+  ruleBasedAdapter(section, _prefs) {
+    const content = section.content.replace(/\n(#+\s)/g, "\n---\n$1");
+    const visualMods = [
+      { type: "border", target: "sections", value: "1px solid #ddd" },
+      { type: "color", target: "headings", value: "#2c3e50" }
+    ];
+    return {
+      originalSectionId: section.id,
+      adaptedTitle: section.title,
+      adaptedContent: content,
+      visualModifications: visualMods,
+      structuralChanges: ["Added section separators", "Explicit heading hierarchy"]
+    };
+  },
+  promptFragment: `**Autism (ASD):**
+- Use precise, literal language (avoid idioms and ambiguity)
+- Provide explicit structure with clear headings
+- Include concrete examples for every abstract concept
+- Use consistent formatting patterns throughout
+- Minimize sensory overload (reduce decorative elements)
+- Provide clear success criteria and completion indicators
+- Use checklists for multi-step tasks`
+};
+var adhdModule = {
+  type: "adhd",
+  profile: {
+    type: "adhd",
+    label: "ADHD",
+    description: "Engagement-focused: small chunks, frequent checkpoints, visual variety, time estimates, and break reminders.",
+    defaultPreferences: {
+      visual: {
+        colorScheme: "pastel",
+        fontSize: 15,
+        fontFamily: "default",
+        lineSpacing: 1.6,
+        letterSpacing: 0,
+        paragraphSpacing: 1.3,
+        maxLineWidth: 70
+      },
+      structural: {
+        chunkSize: "small",
+        progressiveDisclosure: true,
+        showStepNumbers: true,
+        showCheckboxes: true,
+        bulletStyle: "icons",
+        sectionCollapsible: true,
+        taskGranularity: "standard"
+      },
+      cognitive: {
+        focusMode: true,
+        textToSpeech: false,
+        highlightCurrentStep: true,
+        showTimers: true,
+        breakReminders: true,
+        breakIntervalMinutes: 20,
+        simplifiedLanguage: false,
+        showExamples: true
+      }
+    }
+  },
+  strategy: {
+    cssVariables: {
+      "--nc-font-size": "15px",
+      "--nc-font-family": "'Segoe UI', system-ui, sans-serif",
+      "--nc-line-height": "1.6",
+      "--nc-letter-spacing": "0em",
+      "--nc-paragraph-spacing": "1.3em",
+      "--nc-max-width": "70ch",
+      "--nc-bg-color": "#fafafa",
+      "--nc-text-color": "#374151",
+      "--nc-heading-color": "#7c3aed",
+      "--nc-accent-color": "#8b5cf6",
+      "--nc-border-radius": "12px",
+      "--nc-code-bg": "#f5f3ff"
+    },
+    containerClasses: ["nc-profile-adhd"],
+    collapseCodeBlocks: true,
+    addCheckboxes: true,
+    insertDividers: true,
+    addSummaryBoxes: true,
+    maxParagraphLength: 150,
+    showTimeEstimates: true
+  },
+  ruleBasedAdapter(section, _prefs) {
+    const content = `> **Quick Summary:** ${section.title}
+
+${section.content}`;
+    const visualMods = [
+      { type: "highlight", target: "key-terms", value: "#fff3cd" },
+      { type: "icon", target: "steps", value: "checkbox" }
+    ];
+    return {
+      originalSectionId: section.id,
+      adaptedTitle: section.title,
+      adaptedContent: content,
+      visualModifications: visualMods,
+      structuralChanges: ["Added quick summary", "Added progress checkboxes"]
+    };
+  },
+  promptFragment: `**ADHD:**
+- Front-load key information (most important first)
+- Break content into small, digestible chunks
+- Add time estimates for each section
+- Use visual variety (icons, colors, borders) to maintain engagement
+- Include frequent progress checkpoints
+- Provide "quick summary" boxes for each section
+- Add interactive elements (checkboxes, expandable details)`
+};
+function registerBuiltinProfiles() {
+  ProfileRegistry.register(neurotypicalModule);
+  ProfileRegistry.register(dyslexiaModule);
+  ProfileRegistry.register(autismModule);
+  ProfileRegistry.register(adhdModule);
+}
+
 // src/extension.ts
 var controller;
 async function activate(context) {
   const startTime = performance.now();
-  const outputChannel2 = vscode6.window.createOutputChannel("NeuroCode Adapter");
+  const outputChannel2 = vscode9.window.createOutputChannel("NeuroCode Adapter");
   Logger.initialize(outputChannel2);
   context.subscriptions.push(outputChannel2);
   Logger.log("NeuroCode Adapter activating...");
+  registerBuiltinProfiles();
+  Logger.log("Built-in profiles registered");
+  registerBuiltinTools();
+  Logger.log("Built-in scaffold tools registered");
+  const configService = new ConfigService();
+  context.subscriptions.push(configService);
   const webviewManager = new WebviewManager(context.extensionUri);
   context.subscriptions.push(
-    vscode6.window.registerWebviewViewProvider(
+    vscode9.window.registerWebviewViewProvider(
       WebviewManager.VIEW_ID,
       webviewManager,
       { webviewOptions: { retainContextWhenHidden: true } }
     )
   );
-  controller = new NeurocodeController(context, webviewManager);
+  controller = new NeurocodeController(context, webviewManager, configService);
   context.subscriptions.push(controller);
   registerCommands(context, controller);
-  context.subscriptions.push(
-    vscode6.workspace.onDidChangeConfiguration((e2) => {
-      if (e2.affectsConfiguration("neurocode.anthropicApiKey")) {
-        const config2 = vscode6.workspace.getConfiguration("neurocode");
-        const apiKey = config2.get("anthropicApiKey", "");
-        controller?.adaptationEngine.setApiKey(apiKey);
-        controller?.assignmentManager.setApiKey(apiKey);
-        controller?.scaffoldEngine.setApiKey(apiKey);
-      }
-    })
-  );
   const elapsed = Math.round(performance.now() - startTime);
   Logger.log(`NeuroCode Adapter activated in ${elapsed}ms`);
 }
@@ -38244,27 +38802,12 @@ function registerCommands(context, ctrl) {
     ["neurocode.getAIHelp", () => ctrl.requestAdaptation("help_request")],
     ["neurocode.scaffoldProject", () => ctrl.requestScaffold()],
     ["neurocode.showDashboard", () => ctrl.showDashboard()],
-    ["neurocode.exportProgress", async () => {
-      try {
-        const report = await ctrl.assignmentManager.exportProgress();
-        const uri = await vscode6.window.showSaveDialog({
-          defaultUri: vscode6.Uri.file("neurocode-progress.json"),
-          filters: { "JSON Files": ["json"] }
-        });
-        if (uri) {
-          await vscode6.workspace.fs.writeFile(uri, Buffer.from(report, "utf-8"));
-          vscode6.window.showInformationMessage("Progress exported successfully");
-        }
-      } catch (error2) {
-        vscode6.window.showErrorMessage(
-          `Export failed: ${error2 instanceof Error ? error2.message : String(error2)}`
-        );
-      }
-    }]
+    // FIX: Was duplicating the export logic inline. Now delegates to controller.
+    ["neurocode.exportProgress", () => ctrl.handleExportProgress()]
   ];
   for (const [id, handler] of commands3) {
     context.subscriptions.push(
-      vscode6.commands.registerCommand(id, handler)
+      vscode9.commands.registerCommand(id, handler)
     );
   }
   Logger.log(`Registered ${commands3.length} commands`);

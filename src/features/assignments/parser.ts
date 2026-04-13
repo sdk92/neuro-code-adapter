@@ -215,7 +215,8 @@ async function structureViaDirectPdf(
  * Parse raw text into sections using heuristic rules.
  * Used only when no API key is available.
  */
-function structureViaHeuristics(rawText: string, fileName: string): Assignment {
+// REFACTORED: Exported for independent testing (previously private).
+export function structureViaHeuristics(rawText: string, fileName: string): Assignment {
   const lines = rawText.split("\n");
   const sections: AssignmentSection[] = [];
 
@@ -321,7 +322,7 @@ function structureViaHeuristics(rawText: string, fileName: string): Assignment {
   };
 }
 
-function classifySectionTitle(title: string): AssignmentSection["type"] {
+export function classifySectionTitle(title: string): AssignmentSection["type"] {
   const lower = title.toLowerCase();
   if (/task|exercise|implement|create|build|write|code|develop/.test(lower)) { return "task"; }
   if (/hint|tip|advice|note/.test(lower)) { return "hint"; }
@@ -330,7 +331,7 @@ function classifySectionTitle(title: string): AssignmentSection["type"] {
   return "instruction";
 }
 
-function classifyLabel(label: string): AssignmentSection["type"] {
+export function classifyLabel(label: string): AssignmentSection["type"] {
   switch (label.toLowerCase()) {
     case "task":
     case "exercise":
@@ -349,7 +350,7 @@ function classifyLabel(label: string): AssignmentSection["type"] {
   }
 }
 
-function inferDifficulty(text: string): AssignmentMetadata["difficulty"] {
+export function inferDifficulty(text: string): AssignmentMetadata["difficulty"] {
   const complexitySignals = [
     /\b(inheritance|polymorphism|interface|abstract|generic|async|await|delegate|lambda|LINQ)\b/gi,
     /\b(design pattern|architecture|dependency injection|unit test|mock|refactor)\b/gi,
@@ -369,7 +370,7 @@ function inferDifficulty(text: string): AssignmentMetadata["difficulty"] {
 
 // ─── Validation ──────────────────────────────────────────────────────────────
 
-function validateAndNormalise(raw: any, fileName: string): Assignment {
+export function validateAndNormalise(raw: any, fileName: string): Assignment {
   if (!raw || typeof raw !== "object") {
     throw new Error("Parsed result is not an object");
   }

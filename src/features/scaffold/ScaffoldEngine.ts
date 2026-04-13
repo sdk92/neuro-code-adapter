@@ -1,41 +1,36 @@
 /**
  * ScaffoldEngine — Agentic loop for project scaffolding.
  *
- * Inspired by Cline's Task class agentic loop pattern:
+ * REFACTORED: Tool dispatch now uses ScaffoldToolRegistry instead of
+ * a hardcoded switch chain. The engine doesn't know about specific tools —
+ * it looks them up by name and calls their unified interface.
+ *
+ * Adding a new tool no longer requires editing this file.
+ *
+ * Inspired by Claude Code's query.ts agentic loop:
  *   while (true) {
  *     const response = await api.createMessage(...)
  *     if (stop_reason === "end_turn") break
  *     if (stop_reason === "tool_use") {
- *       await executeTools(response)  // then loop again with tool_result
+ *       await executeTools(response)  // dispatch via registry
  *     }
  *   }
- *
- * Key differences from AdaptationEngine:
- *   - Multi-turn conversation (tool_use loop, not single-shot)
- *   - Tools have real side effects (file creation, command execution)
- *   - Every tool call requires user approval via VS Code confirmation dialog
- *   - Uses VS Code workspace API for file writes
  */
 import * as vscode from "vscode";
-import * as path from "path";
 import Anthropic from "@anthropic-ai/sdk";
-import { CommandExecutor } from "./CommandExecutor";
+import { ScaffoldToolRegistry } from "./ScaffoldToolRegistry";
 import { buildToolsForAssignment } from "./ScaffoldToolBuilder";
-import type { ScaffoldRequest, ToolExecutionResult } from "@shared/types";
+import { disposeExecutor } from "./tools";
+import type { ScaffoldRequest, ToolExecutionContext, ToolExecutionResult } from "@shared/types";
 import { Logger } from "@shared/logger";
 
-const MAX_ITERATIONS = 20; // Safety limit — prevents runaway loops
+const MAX_ITERATIONS = 20;
 
 type ProgressCallback = (message: string, isDone: boolean) => void;
 
 export class ScaffoldEngine implements vscode.Disposable {
   private anthropic: Anthropic | undefined;
-  private executor: CommandExecutor;
   private inProgress = false;
-
-  constructor() {
-    this.executor = new CommandExecutor();
-  }
 
   setApiKey(apiKey: string): void {
     this.anthropic = new Anthropic({ apiKey });
@@ -47,8 +42,6 @@ export class ScaffoldEngine implements vscode.Disposable {
 
   /**
    * Run the scaffolding agentic loop.
-   * Sends the assignment context + tools to Claude, then executes each
-   * tool_use block (with user approval) until Claude signals end_turn.
    */
   async run(request: ScaffoldRequest, onProgress: ProgressCallback): Promise<void> {
     if (!this.anthropic) {
@@ -70,17 +63,16 @@ export class ScaffoldEngine implements vscode.Disposable {
   private async agenticLoop(request: ScaffoldRequest, onProgress: ProgressCallback): Promise<void> {
     const { tools, systemHint } = buildToolsForAssignment(request.assignment);
 
+    // Build system prompt from static rules + tool-contributed prompt fragments
+    const toolPrompts = ScaffoldToolRegistry.buildPromptFragments();
+
     const systemPrompt = [
       "You are NeuroCode Scaffold, a programming tutor assistant that creates project skeletons for students.",
       systemHint,
       "",
       "Think step by step. Use tools one at a time. Do not explain yourself — just call tools.",
       "Rules for the agentic loop:",
-      "- NEVER use `cd` as a standalone command. Use the `cwd` parameter of execute_command instead.",
-      "- NEVER retry a command that already returned exit code 0 — treat it as done.",
-      "- 'Requirement already satisfied' means the package IS installed — do NOT install it again.",
-      "- Once the environment is set up (venv created, packages installed), IMMEDIATELY move on to creating source files with create_file.",
-      "- After creating all files, call open_in_editor on the main entry file, then stop.",
+      toolPrompts,
     ].join("\n");
 
     const userMessage = buildScaffoldPrompt(request);
@@ -102,7 +94,6 @@ export class ScaffoldEngine implements vscode.Disposable {
 
       Logger.log(`[ScaffoldEngine] Iteration ${i + 1}, stop_reason: ${response.stop_reason}`);
 
-      // Collect all tool_use blocks in this response
       const toolUseBlocks = response.content.filter(
         (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
       );
@@ -112,13 +103,12 @@ export class ScaffoldEngine implements vscode.Disposable {
         break;
       }
 
-      // Add assistant turn to history
       messages.push({ role: "assistant", content: response.content });
 
-      // Execute each tool in sequence (Cline pattern: sequential tool execution)
       const toolResults: Anthropic.ToolResultBlockParam[] = [];
 
       for (const block of toolUseBlocks) {
+        // ── Registry-based dispatch (replaces switch chain) ──────────
         const result = await this.executeTool(block, request.workspaceRoot, onProgress);
         toolResults.push({
           type: "tool_result",
@@ -127,142 +117,51 @@ export class ScaffoldEngine implements vscode.Disposable {
         });
 
         if (!result.success) {
-          // Let Claude know the tool failed and decide how to recover
           Logger.warn(`[ScaffoldEngine] Tool ${block.name} failed: ${result.error}`);
         }
       }
 
-      // Add tool results as user turn to continue the loop
       messages.push({ role: "user", content: toolResults });
     }
   }
 
   /**
-   * Dispatch a single tool_use block to the correct handler.
-   * Every tool call shows a VS Code confirmation dialog first.
+   * Dispatch a tool_use block via ScaffoldToolRegistry.
+   *
+   * REFACTORED: No more switch(block.name). The registry does the lookup.
+   * Unknown tools return a structured error that the LLM can recover from.
    */
   private async executeTool(
     block: Anthropic.ToolUseBlock,
     workspaceRoot: string,
     onProgress: ProgressCallback
   ): Promise<ToolExecutionResult> {
+    const tool = ScaffoldToolRegistry.get(block.name);
+
+    if (!tool) {
+      return {
+        toolUseId: block.id,
+        success: false,
+        output: "",
+        error: `Unknown tool: ${block.name}. Available: ${ScaffoldToolRegistry.getNames().join(", ")}`,
+      };
+    }
+
+    // Build the execution context — decouples tools from engine internals
+    const context: ToolExecutionContext = {
+      toolUseId: block.id,
+      workspaceRoot,
+      onProgress,
+      requestApproval: (title, detail) => this.requestApproval(title, detail),
+    };
+
     const input = block.input as Record<string, string>;
 
-    switch (block.name) {
-      case "execute_command":
-        return this.handleExecuteCommand(block.id, input, workspaceRoot, onProgress);
-
-      case "create_file":
-        return this.handleCreateFile(block.id, input, workspaceRoot, onProgress);
-
-      case "open_in_editor":
-        return this.handleOpenInEditor(block.id, input, workspaceRoot, onProgress);
-
-      default:
-        return {
-          toolUseId: block.id,
-          success: false,
-          output: "",
-          error: `Unknown tool: ${block.name}`,
-        };
-    }
-  }
-
-  // ─── Tool Handlers ──────────────────────────────────────────────────────────
-
-  private async handleExecuteCommand(
-    toolUseId: string,
-    input: Record<string, string>,
-    workspaceRoot: string,
-    onProgress: ProgressCallback
-  ): Promise<ToolExecutionResult> {
-    const { command, cwd: relativeCwd, description } = input;
-    const resolvedCwd = relativeCwd
-      ? path.resolve(workspaceRoot, relativeCwd)
-      : workspaceRoot;
-
-    onProgress(`Requesting approval: ${description ?? command}`, false);
-
-    // ── User approval gate ──────────────────────────────────────────────────
-    const approved = await this.requestApproval(
-      `Run command: \`${command}\``,
-      `Directory: ${resolvedCwd}\n\n${description ?? ""}`
-    );
-
-    if (!approved) {
-      return { toolUseId, success: false, output: "", error: "User rejected command." };
-    }
-
-    onProgress(`Running: ${command}`, false);
-
     try {
-      const { output, exitCode } = await this.executor.execute(command, resolvedCwd);
-      if (exitCode !== 0) {
-        return { toolUseId, success: false, output, error: `Exit code ${exitCode}` };
-      }
-      return { toolUseId, success: true, output };
+      return await tool.call(input, context);
     } catch (err) {
       return {
-        toolUseId,
-        success: false,
-        output: "",
-        error: err instanceof Error ? err.message : String(err),
-      };
-    }
-  }
-
-  private async handleCreateFile(
-    toolUseId: string,
-    input: Record<string, string>,
-    workspaceRoot: string,
-    onProgress: ProgressCallback
-  ): Promise<ToolExecutionResult> {
-    const { path: relativePath, content, description } = input;
-    const absolutePath = path.resolve(workspaceRoot, relativePath);
-
-    onProgress(`Requesting approval: create ${relativePath}`, false);
-
-    const approved = await this.requestApproval(
-      `Create file: \`${relativePath}\``,
-      description ?? ""
-    );
-
-    if (!approved) {
-      return { toolUseId, success: false, output: "", error: "User rejected file creation." };
-    }
-
-    try {
-      const uri = vscode.Uri.file(absolutePath);
-      await vscode.workspace.fs.writeFile(uri, Buffer.from(content, "utf-8"));
-      onProgress(`Created: ${relativePath}`, false);
-      return { toolUseId, success: true, output: `File created: ${relativePath}` };
-    } catch (err) {
-      return {
-        toolUseId,
-        success: false,
-        output: "",
-        error: err instanceof Error ? err.message : String(err),
-      };
-    }
-  }
-
-  private async handleOpenInEditor(
-    toolUseId: string,
-    input: Record<string, string>,
-    workspaceRoot: string,
-    onProgress: ProgressCallback
-  ): Promise<ToolExecutionResult> {
-    const { path: relativePath } = input;
-    const absolutePath = path.resolve(workspaceRoot, relativePath);
-
-    try {
-      const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(absolutePath));
-      await vscode.window.showTextDocument(doc, vscode.ViewColumn.One);
-      onProgress(`Opened: ${relativePath}`, false);
-      return { toolUseId, success: true, output: `Opened ${relativePath} in editor.` };
-    } catch (err) {
-      return {
-        toolUseId,
+        toolUseId: block.id,
         success: false,
         output: "",
         error: err instanceof Error ? err.message : String(err),
@@ -283,7 +182,7 @@ export class ScaffoldEngine implements vscode.Disposable {
   }
 
   dispose(): void {
-    this.executor.dispose();
+    disposeExecutor();
   }
 }
 

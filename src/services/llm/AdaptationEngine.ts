@@ -16,18 +16,19 @@ import type {
   AdaptationRequest,
   AdaptationResponse,
   AdaptedSection,
-  Assignment,
-  NeurodiversityType,
   SuggestedAction,
   UserPreferences,
   VisualModification,
 } from "@shared/types";
 import { Logger } from "@shared/logger";
+import { ProfileRegistry } from "@shared/ProfileRegistry";
 import { NEURODIVERSITY_PROFILES } from "@features/preferences/profiles";
 
-// ─── System Prompt Template ──────────────────────────────────────────────────
+// ─── System Prompt Builder ───────────────────────────────────────────────────
+// REFACTORED: Prompt fragments are now pulled from ProfileRegistry.
+// Adding a new profile automatically extends the system prompt.
 
-const SYSTEM_PROMPT = `You are an adaptive learning assistant for the NeuroCode Adapter system.
+const SYSTEM_PROMPT_PREFIX = `You are an adaptive learning assistant for the NeuroCode Adapter system.
 Your role is to transform programming assignment content to better support neurodiverse learners.
 
 You MUST respond with valid JSON matching the AdaptationResponse schema:
@@ -49,39 +50,12 @@ You MUST respond with valid JSON matching the AdaptationResponse schema:
   "confidenceScore": 0.0-1.0
 }
 
-Adaptation principles by neurodiversity type:
+Adaptation principles by neurodiversity type:`;
 
-**Dyslexia:**
-- Use shorter paragraphs and bullet points
-- Increase white space between sections
-- Avoid justified text alignment
-- Use sans-serif fonts, larger font sizes
-- Break complex instructions into numbered steps
-- Add visual separators between logical blocks
-- Use color coding for different types of information
-
-**Autism (ASD):**
-- Use precise, literal language (avoid idioms and ambiguity)
-- Provide explicit structure with clear headings
-- Include concrete examples for every abstract concept
-- Use consistent formatting patterns throughout
-- Minimize sensory overload (reduce decorative elements)
-- Provide clear success criteria and completion indicators
-- Use checklists for multi-step tasks
-
-**ADHD:**
-- Front-load key information (most important first)
-- Break content into small, digestible chunks
-- Add time estimates for each section
-- Use visual variety (icons, colors, borders) to maintain engagement
-- Include frequent progress checkpoints
-- Provide "quick summary" boxes for each section
-- Add interactive elements (checkboxes, expandable details)
-
-**Neurotypical:**
-- Standard presentation with good readability
-- Balanced structure and visual hierarchy
-- Clear but not over-simplified language`;
+function buildSystemPrompt(): string {
+  const fragments = ProfileRegistry.buildCombinedPromptFragments();
+  return `${SYSTEM_PROMPT_PREFIX}\n\n${fragments}`;
+}
 
 // ─── Prompt Builder ──────────────────────────────────────────────────────────
 
@@ -144,7 +118,8 @@ function buildAdaptationPrompt(request: AdaptationRequest): string {
 
 // ─── Response Validator ──────────────────────────────────────────────────────
 
-function validateAdaptationResponse(raw: unknown): AdaptationResponse | null {
+// REFACTORED: Exported for independent testing (previously private).
+export function validateAdaptationResponse(raw: unknown): AdaptationResponse | null {
   if (!raw || typeof raw !== "object") { return null; }
 
   const obj = raw as Record<string, unknown>;
@@ -279,7 +254,7 @@ export class AdaptationEngine {
     const stream = this.anthropicClient!.messages.stream({
       model: "claude-sonnet-4-20250514",
       max_tokens: 64000,
-      system: SYSTEM_PROMPT,
+      system: buildSystemPrompt(),
       messages: [{ role: "user", content: prompt }],
     });
 
@@ -313,59 +288,27 @@ export class AdaptationEngine {
   /**
    * Rule-based adaptation fallback — no LLM needed.
    * Applies deterministic transformations based on neurodiversity profile.
+   *
+   * REFACTORED: Delegates to ProfileRegistry's ruleBasedAdapter.
+   * Adding a new profile's rule-based adapter no longer requires editing this file.
    */
   private generateRuleBased(request: AdaptationRequest): AdaptationResponse {
     const { assignment, userPreferences } = request;
     const profileType = userPreferences.neurodiversityType;
 
+    const mod = ProfileRegistry.get(profileType);
+
     const adaptedSections: AdaptedSection[] = assignment.sections.map((section) => {
-      let content = section.content;
-      const visualMods: AdaptedSection["visualModifications"] = [];
-      const structuralChanges: string[] = [];
-
-      switch (profileType) {
-        case "dyslexia":
-          // Break long paragraphs into shorter ones
-          content = content.replace(/(.{200,}?\.)\s/g, "$1\n\n");
-          visualMods.push(
-            { type: "font", target: "body", value: userPreferences.visual.fontFamily || "OpenDyslexic" },
-            { type: "spacing", target: "line-height", value: "1.8" },
-            { type: "spacing", target: "letter-spacing", value: "0.05em" },
-          );
-          structuralChanges.push("Split long paragraphs", "Increased spacing");
-          break;
-
-        case "autism":
-          // Add explicit structure markers
-          content = content.replace(/\n(#+\s)/g, "\n---\n$1");
-          visualMods.push(
-            { type: "border", target: "sections", value: "1px solid #ddd" },
-            { type: "color", target: "headings", value: "#2c3e50" },
-          );
-          structuralChanges.push("Added section separators", "Explicit heading hierarchy");
-          break;
-
-        case "adhd":
-          // Add summary markers and break into chunks
-          content = `> **Quick Summary:** ${section.title}\n\n${content}`;
-          visualMods.push(
-            { type: "highlight", target: "key-terms", value: "#fff3cd" },
-            { type: "icon", target: "steps", value: "checkbox" },
-          );
-          structuralChanges.push("Added quick summary", "Added progress checkboxes");
-          break;
-
-        default:
-          // Neurotypical — minimal changes
-          break;
+      if (mod) {
+        return mod.ruleBasedAdapter(section, userPreferences);
       }
-
+      // Fallback for unregistered types — pass through unchanged
       return {
         originalSectionId: section.id,
         adaptedTitle: section.title,
-        adaptedContent: content,
-        visualModifications: visualMods,
-        structuralChanges,
+        adaptedContent: section.content,
+        visualModifications: [],
+        structuralChanges: [],
       };
     });
 

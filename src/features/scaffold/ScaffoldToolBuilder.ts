@@ -1,157 +1,96 @@
 /**
  * ScaffoldToolBuilder — Builds a tailored Claude tool set based on assignment content.
  *
- * Core idea: instead of passing a generic, unlimited tool list to the LLM,
- * we inspect the assignment's language/tags/difficulty and produce a minimal,
- * focused set of tools + a scaffold prompt that guides Claude to create
- * exactly the right project skeleton.
+ * REFACTORED: Tool definitions now come from ScaffoldToolRegistry. 
+ * This file only handles:
+ *   1. Collecting language/framework hints
+ *   2. Asking the registry to build the Anthropic API tool array
+ *   3. Building the system hint string
  *
- * Tools defined here match Anthropic's Tool schema (tool_use API).
+ * The static tool definitions (execute_command, create_file, open_in_editor)
+ * are now in tools/*.ts and registered via registerBuiltinTools().
  */
 import type Anthropic from "@anthropic-ai/sdk";
 import type { Assignment } from "@shared/types";
+import { ScaffoldToolRegistry } from "./ScaffoldToolRegistry";
 
 export type AnthropicTool = Anthropic.Tool;
 
-// ─── Base tool definitions ──────────────────────────────────────────────────
+// ─── Language/Framework hints ────────────────────────────────────────────────
 
-const EXECUTE_COMMAND_TOOL: AnthropicTool = {
-  name: "execute_command",
-  description:
-    "Run a shell command to scaffold the project (e.g. create-react-app, dotnet new, cargo init). " +
-    "Always prefer official project-creation CLIs. Keep commands non-interactive (use --yes / -y flags). " +
-    "Each command call must do one logical step only. " +
-    "NEVER use `cd` as a standalone command — use the `cwd` parameter instead to set the working directory.",
-  input_schema: {
-    type: "object" as const,
-    properties: {
-      command: {
-        type: "string",
-        description: "The shell command to execute",
-      },
-      cwd: {
-        type: "string",
-        description: "Working directory for the command (optional, defaults to workspace root)",
-      },
-      description: {
-        type: "string",
-        description: "One-line human-readable description of what this command does",
-      },
-    },
-    required: ["command", "description"],
-  },
-};
+const LANGUAGE_HINTS = new Map<string, string>([
+  ["typescript", "Use `npm create vite@latest -- --template vanilla-ts` or `npx create-react-app --template typescript`."],
+  ["javascript", "Use `npm create vite@latest -- --template vanilla` or `npx create-react-app`."],
+  ["python", "Use `python3 -m venv .venv` on Linux/macOS or `python -m venv .venv` on Windows, then activate and pip install."],
+  ["csharp", "Use `dotnet new <template>` (console / webapi / mvc / xunit etc.)."],
+  ["java", "Use `mvn archetype:generate -DinteractiveMode=false` or `gradle init --type java-application`."],
+  ["rust", "Use `cargo init` or `cargo new <n>`."],
+  ["go", "Use `go mod init <module>` then create main.go."],
+  ["cpp", "Create CMakeLists.txt + src/main.cpp structure."],
+]);
 
-const CREATE_FILE_TOOL: AnthropicTool = {
-  name: "create_file",
-  description:
-    "Create or overwrite a file with the given content. " +
-    "Use this to add starter code, config files, or README. " +
-    "Prefer this over running echo/cat in execute_command.",
-  input_schema: {
-    type: "object" as const,
-    properties: {
-      path: {
-        type: "string",
-        description: "Relative file path from the workspace root",
-      },
-      content: {
-        type: "string",
-        description: "Full file content",
-      },
-      description: {
-        type: "string",
-        description: "One-line description of what this file is",
-      },
-    },
-    required: ["path", "content", "description"],
-  },
-};
+const TAG_HINTS = new Map<string, string>([
+  ["react", "Bootstrap with `npm create vite@latest -- --template react-ts` (TypeScript) or `--template react`."],
+  ["vue", "Bootstrap with `npm create vite@latest -- --template vue-ts`."],
+  ["express", "Use `npm init -y && npm install express`."],
+  ["fastapi", "Use `pip install fastapi uvicorn` and create main.py with a starter FastAPI app."],
+  ["django", "Use `django-admin startproject <n> .`."],
+  ["flask", "Use `pip install flask` and create app.py."],
+  ["nextjs", "Use `npx create-next-app@latest --ts --no-git`."],
+  ["jest", "Add `npm install --save-dev jest @types/jest ts-jest`."],
+  ["pytest", "Add `pip install pytest`."],
+]);
 
-const OPEN_IN_EDITOR_TOOL: AnthropicTool = {
-  name: "open_in_editor",
-  description:
-    "Open a file in the VS Code editor after scaffolding is complete. " +
-    "Call this last, for the file the student should start editing.",
-  input_schema: {
-    type: "object" as const,
-    properties: {
-      path: {
-        type: "string",
-        description: "Relative file path from the workspace root to open",
-      },
-    },
-    required: ["path"],
-  },
-};
+/**
+ * Register a language-specific scaffold hint at runtime.
+ */
+export function registerLanguageHint(language: string, hint: string): void {
+  LANGUAGE_HINTS.set(language.toLowerCase(), hint);
+}
 
-// ─── Language-specific tool hints injected into descriptions ────────────────
-
-const LANGUAGE_HINTS: Record<string, string> = {
-  typescript: "Use `npm create vite@latest -- --template vanilla-ts` or `npx create-react-app --template typescript`.",
-  javascript: "Use `npm create vite@latest -- --template vanilla` or `npx create-react-app`.",
-  python: "Use `python3 -m venv .venv` on Linux/macOS or `python -m venv .venv` on Windows, then activate and pip install.",
-  csharp: "Use `dotnet new <template>` (console / webapi / mvc / xunit etc.).",
-  java: "Use `mvn archetype:generate -DinteractiveMode=false` or `gradle init --type java-application`.",
-  rust: "Use `cargo init` or `cargo new <name>`.",
-  go: "Use `go mod init <module>` then create main.go.",
-  cpp: "Create CMakeLists.txt + src/main.cpp structure.",
-};
-
-// Framework/tag hints injected when tags match
-const TAG_HINTS: Record<string, string> = {
-  react: "Bootstrap with `npm create vite@latest -- --template react-ts` (TypeScript) or `--template react`.",
-  vue: "Bootstrap with `npm create vite@latest -- --template vue-ts`.",
-  express: "Use `npm init -y && npm install express`.",
-  fastapi: "Use `pip install fastapi uvicorn` and create main.py with a starter FastAPI app.",
-  django: "Use `django-admin startproject <name> .`.",
-  flask: "Use `pip install flask` and create app.py.",
-  nextjs: "Use `npx create-next-app@latest --ts --no-git`.",
-  jest: "Add `npm install --save-dev jest @types/jest ts-jest`.",
-  pytest: "Add `pip install pytest`.",
-};
+/**
+ * Register a tag/framework-specific scaffold hint at runtime.
+ */
+export function registerTagHint(tag: string, hint: string): void {
+  TAG_HINTS.set(tag.toLowerCase(), hint);
+}
 
 // ─── Builder ────────────────────────────────────────────────────────────────
 
 export interface ScaffoldToolSet {
   tools: AnthropicTool[];
-  systemHint: string; // Extra guidance injected into the system prompt
+  systemHint: string;
 }
 
+/**
+ * Build the tool set for a specific assignment.
+ *
+ * REFACTORED: Delegates to ScaffoldToolRegistry.buildAnthropicTools()
+ * instead of maintaining a static array of tool definitions.
+ */
 export function buildToolsForAssignment(assignment: Assignment): ScaffoldToolSet {
   const lang = assignment.metadata.language?.toLowerCase() ?? "";
   const tags = (assignment.metadata.tags ?? []).map((t) => t.toLowerCase());
 
+  // Collect hints relevant to this assignment
   const hints: string[] = [];
 
-  // Inject language-specific hint into the execute_command description
-  const langHint = LANGUAGE_HINTS[lang];
-  if (langHint) {
-    hints.push(langHint);
-  }
+  const langHint = LANGUAGE_HINTS.get(lang);
+  if (langHint) { hints.push(langHint); }
 
-  // Inject framework hints for matching tags
   for (const tag of tags) {
-    const tagHint = TAG_HINTS[tag];
-    if (tagHint) {
-      hints.push(tagHint);
-    }
+    const tagHint = TAG_HINTS.get(tag);
+    if (tagHint) { hints.push(tagHint); }
   }
 
-  // Patch execute_command tool description with concrete hints
-  const patchedExecuteTool: AnthropicTool = hints.length > 0
-    ? {
-        ...EXECUTE_COMMAND_TOOL,
-        description: EXECUTE_COMMAND_TOOL.description + "\n\nPreferred commands for this assignment:\n" +
-          hints.map((h) => `- ${h}`).join("\n"),
-      }
-    : EXECUTE_COMMAND_TOOL;
+  // Build hints map: only execute_command gets the language/framework hints
+  const hintsByTool = new Map<string, string[]>();
+  if (hints.length > 0) {
+    hintsByTool.set("execute_command", hints);
+  }
 
-  const tools: AnthropicTool[] = [
-    patchedExecuteTool,
-    CREATE_FILE_TOOL,
-    OPEN_IN_EDITOR_TOOL,
-  ];
+  // Build Anthropic tool array from registry
+  const tools = ScaffoldToolRegistry.buildAnthropicTools(hintsByTool);
 
   const systemHint = buildSystemHint(assignment, lang, tags, hints);
 
@@ -172,13 +111,10 @@ function buildSystemHint(
     `Estimated time: ${assignment.metadata.estimatedMinutes} minutes`,
     "",
     "Your task is to scaffold a starter project for this assignment using the tools provided.",
+    `Available tools: ${ScaffoldToolRegistry.getNames().join(", ")}`,
     "Rules:",
-    "1. Use execute_command for CLI scaffolding steps.",
-    "2. Use create_file to add or overwrite individual source files.",
-    "3. Use open_in_editor ONCE at the very end to open the main entry-point file.",
-    "4. Keep commands non-interactive (pass --yes, -y, or equivalent flags).",
-    "5. Prefer minimal, correct scaffolding over feature-rich boilerplate.",
-    "6. When done, call open_in_editor on the file the student should start editing.",
+    "1. Keep commands non-interactive (pass --yes, -y, or equivalent flags).",
+    "2. Prefer minimal, correct scaffolding over feature-rich boilerplate.",
     hints.length > 0 ? `\nPreferred tooling hints:\n${hints.map((h) => `- ${h}`).join("\n")}` : "",
   ];
 

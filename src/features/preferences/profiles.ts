@@ -1,177 +1,53 @@
 /**
  * Neurodiversity profile definitions.
  *
- * Each profile contains:
- *   - Type identifier
- *   - Human-readable label and description
- *   - Default preferences tuned for that profile's cognitive/perceptual needs
+ * REFACTORED: This file is now a thin backward-compatibility layer.
+ * Actual profile data lives in ProfileRegistry (registered via builtinProfiles.ts).
  *
- * These defaults follow Universal Design for Learning (UDL) principles
- * and neurodiversity-affirming education research.
+ * Existing consumers that import NEURODIVERSITY_PROFILES or getDefaultPreferences
+ * continue to work without changes.
  */
 import type { NeurodiversityProfile, NeurodiversityType, UserPreferences } from "@shared/types";
+import { ProfileRegistry } from "@shared/ProfileRegistry";
 
-export const NEURODIVERSITY_PROFILES: Record<NeurodiversityType, NeurodiversityProfile> = {
-  neurotypical: {
-    type: "neurotypical",
-    label: "Neurotypical",
-    description: "Standard presentation with good readability and balanced structure.",
-    defaultPreferences: {
-      visual: {
-        colorScheme: "default",
-        fontSize: 14,
-        fontFamily: "default",
-        lineSpacing: 1.5,
-        letterSpacing: 0,
-        paragraphSpacing: 1.0,
-        maxLineWidth: 80,
-      },
-      structural: {
-        chunkSize: "large",
-        progressiveDisclosure: false,
-        showStepNumbers: true,
-        showCheckboxes: false,
-        bulletStyle: "bullets",
-        sectionCollapsible: false,
-        taskGranularity: "standard",
-      },
-      cognitive: {
-        focusMode: false,
-        textToSpeech: false,
-        highlightCurrentStep: false,
-        showTimers: false,
-        breakReminders: false,
-        breakIntervalMinutes: 45,
-        simplifiedLanguage: false,
-        showExamples: true,
-      },
-    },
-  },
+/**
+ * NEURODIVERSITY_PROFILES — backward-compatible record accessor.
+ *
+ * Returns a snapshot of all registered profiles. Note: if profiles are
+ * registered after this import, the reference won't update. For dynamic
+ * access, use ProfileRegistry.getAllProfiles() directly.
+ */
+export function getNeurodiversityProfiles(): Record<string, NeurodiversityProfile> {
+  return ProfileRegistry.getAllProfiles();
+}
 
-  dyslexia: {
-    type: "dyslexia",
-    label: "Dyslexia",
-    description:
-      "Optimized for reading ease: larger fonts, increased spacing, " +
-      "dyslexia-friendly typeface, shorter paragraphs, and visual anchors.",
-    defaultPreferences: {
-      visual: {
-        colorScheme: "warm",
-        fontSize: 16,
-        fontFamily: "OpenDyslexic",
-        lineSpacing: 2.0,
-        letterSpacing: 0.05,
-        paragraphSpacing: 1.5,
-        maxLineWidth: 65,
-      },
-      structural: {
-        chunkSize: "small",
-        progressiveDisclosure: true,
-        showStepNumbers: true,
-        showCheckboxes: true,
-        bulletStyle: "numbers",
-        sectionCollapsible: true,
-        taskGranularity: "detailed",
-      },
-      cognitive: {
-        focusMode: false,
-        textToSpeech: true,
-        highlightCurrentStep: true,
-        showTimers: false,
-        breakReminders: false,
-        breakIntervalMinutes: 30,
-        simplifiedLanguage: true,
-        showExamples: true,
-      },
+// For backward compatibility with static imports like:
+//   import { NEURODIVERSITY_PROFILES } from "./profiles"
+// We use a lazy getter so it always reflects the current registry state.
+export const NEURODIVERSITY_PROFILES = new Proxy(
+  {} as Record<NeurodiversityType, NeurodiversityProfile>,
+  {
+    get(_target, prop: string) {
+      const mod = ProfileRegistry.get(prop);
+      return mod?.profile;
     },
-  },
-
-  autism: {
-    type: "autism",
-    label: "Autism Spectrum",
-    description:
-      "Clear structure, precise language, consistent patterns, " +
-      "explicit expectations, and reduced sensory complexity.",
-    defaultPreferences: {
-      visual: {
-        colorScheme: "cool",
-        fontSize: 14,
-        fontFamily: "Atkinson Hyperlegible",
-        lineSpacing: 1.6,
-        letterSpacing: 0,
-        paragraphSpacing: 1.2,
-        maxLineWidth: 75,
-      },
-      structural: {
-        chunkSize: "medium",
-        progressiveDisclosure: false,
-        showStepNumbers: true,
-        showCheckboxes: true,
-        bulletStyle: "numbers",
-        sectionCollapsible: false,
-        taskGranularity: "detailed",
-      },
-      cognitive: {
-        focusMode: true,
-        textToSpeech: false,
-        highlightCurrentStep: true,
-        showTimers: true,
-        breakReminders: false,
-        breakIntervalMinutes: 40,
-        simplifiedLanguage: false,
-        showExamples: true,
-      },
+    ownKeys() {
+      return ProfileRegistry.getTypes();
     },
-  },
-
-  adhd: {
-    type: "adhd",
-    label: "ADHD",
-    description:
-      "Engagement-focused: small chunks, frequent checkpoints, " +
-      "visual variety, time estimates, and break reminders.",
-    defaultPreferences: {
-      visual: {
-        colorScheme: "pastel",
-        fontSize: 15,
-        fontFamily: "default",
-        lineSpacing: 1.6,
-        letterSpacing: 0,
-        paragraphSpacing: 1.3,
-        maxLineWidth: 70,
-      },
-      structural: {
-        chunkSize: "small",
-        progressiveDisclosure: true,
-        showStepNumbers: true,
-        showCheckboxes: true,
-        bulletStyle: "icons",
-        sectionCollapsible: true,
-        taskGranularity: "standard",
-      },
-      cognitive: {
-        focusMode: true,
-        textToSpeech: false,
-        highlightCurrentStep: true,
-        showTimers: true,
-        breakReminders: true,
-        breakIntervalMinutes: 20,
-        simplifiedLanguage: false,
-        showExamples: true,
-      },
+    getOwnPropertyDescriptor(_target, prop: string) {
+      const mod = ProfileRegistry.get(prop as string);
+      if (!mod) { return undefined; }
+      return { configurable: true, enumerable: true, value: mod.profile };
     },
-  },
-};
+    has(_target, prop: string) {
+      return ProfileRegistry.get(prop) !== undefined;
+    },
+  }
+);
 
 /**
  * Get full default preferences for a neurodiversity type.
  */
 export function getDefaultPreferences(type: NeurodiversityType): UserPreferences {
-  const profile = NEURODIVERSITY_PROFILES[type];
-  return {
-    neurodiversityType: type,
-    visual: profile.defaultPreferences.visual!,
-    structural: profile.defaultPreferences.structural!,
-    cognitive: profile.defaultPreferences.cognitive!,
-  } as UserPreferences;
+  return ProfileRegistry.getDefaultPreferences(type);
 }

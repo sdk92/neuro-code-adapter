@@ -154,6 +154,56 @@ export interface ToolExecutionResult {
   error?: string;
 }
 
+/**
+ * Context passed to every tool during execution.
+ * Decouples tools from knowing about ScaffoldEngine internals.
+ */
+export interface ToolExecutionContext {
+  toolUseId: string;
+  workspaceRoot: string;
+  onProgress: (message: string, isDone: boolean) => void;
+  requestApproval: (title: string, detail: string) => Promise<boolean>;
+}
+
+/**
+ * NeurocodeToolDef — Self-contained tool definition.
+ *
+ * Inspired by Claude Code's Tool<Input, Output, P> interface.
+ * Each tool bundles its own:
+ *   - API schema (name, description, input_schema for the LLM)
+ *   - Execution logic (call)
+ *   - Permission check (requiresApproval)
+ *   - Self-description (isReadOnly, promptFragment)
+ *
+ * Adding a new tool = create one object satisfying this interface
+ * and register it. No switch chains, no ScaffoldEngine edits.
+ */
+export interface NeurocodeToolDef {
+  /** Tool name as the LLM will call it (e.g. "execute_command") */
+  readonly name: string;
+
+  /** Human-readable description sent to the LLM */
+  description(hints?: string[]): string;
+
+  /** JSON Schema for the tool's input parameters */
+  readonly inputSchema: Record<string, unknown>;
+
+  /** Execute the tool. Returns success/failure + output. */
+  call(
+    input: Record<string, string>,
+    context: ToolExecutionContext,
+  ): Promise<ToolExecutionResult>;
+
+  /** Whether this tool requires user approval before execution */
+  requiresApproval: boolean;
+
+  /** Whether this tool is read-only (no side effects) */
+  isReadOnly: boolean;
+
+  /** Optional prompt fragment injected into the system prompt */
+  promptFragment?: string;
+}
+
 export interface ScaffoldProgress {
   message: string;
   isDone: boolean;

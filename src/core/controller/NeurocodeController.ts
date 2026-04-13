@@ -37,6 +37,8 @@ import { ScaffoldEngine } from "@features/scaffold/ScaffoldEngine";
 import type { WebviewMessage } from "@shared/messages";
 import type { AdaptationRequest, AdaptationResponse, Assignment } from "@shared/types";
 import { Logger } from "@shared/logger";
+import { ConfigService } from "@shared/ConfigService";
+import { validateWebviewMessage } from "@shared/MessageValidator";
 
 // ─── AdaptationState (inspired by Cline's TaskState, line 166) ───────────────
 // Cline's Task class uses a separate TaskState object to hold mutable state.
@@ -66,20 +68,20 @@ export class NeurocodeController implements vscode.Disposable {
   readonly renderer: AdaptiveRenderer;
   readonly scaffoldEngine: ScaffoldEngine;
   readonly webview: WebviewManager;
+  readonly configService: ConfigService;
 
   // ─── State (inspired by Cline's TaskState pattern) ──────────────
   private adaptationState: AdaptationState = createInitialState();
   private currentAdaptation: AdaptationResponse | null = null;
 
   // ─── Concurrency guards (inspired by Cline Controller line 427) ─
-  // Cline uses cancelInProgress flag to prevent duplicate cancellations
-  // from spam clicking. We use the same pattern for adaptation requests.
   private adaptationInProgress = false;
 
 
   constructor(
     context: vscode.ExtensionContext,
-    webview: WebviewManager
+    webview: WebviewManager,
+    configService: ConfigService
   ) {
     // Initialize subsystems
     this.mcpManager = new McpManager();
@@ -89,19 +91,26 @@ export class NeurocodeController implements vscode.Disposable {
     this.renderer = new AdaptiveRenderer();
     this.scaffoldEngine = new ScaffoldEngine();
     this.webview = webview;
+    this.configService = configService;
 
     // Wire up connections
     this.setupMcpCallbacks();
     this.setupPreferenceCallbacks();
     this.setupWebviewMessageRouter();
-    // Initialize API key from settings
-    const config = vscode.workspace.getConfiguration("neurocode");
-    const apiKey = config.get<string>("anthropicApiKey", "");
+
+    // REFACTORED: API key now managed by ConfigService.
+    // All subsystems subscribe to config changes — no manual propagation needed.
+    const apiKey = configService.apiKey;
     if (apiKey) {
-      this.adaptationEngine.setApiKey(apiKey);
-      this.assignmentManager.setApiKey(apiKey); // Also used for PDF structuring
-      this.scaffoldEngine.setApiKey(apiKey);
+      this.propagateApiKey(apiKey);
     }
+
+    // Subscribe to future API key changes
+    configService.onChange((config, changed) => {
+      if (changed.has("anthropicApiKey")) {
+        this.propagateApiKey(config.anthropicApiKey);
+      }
+    });
 
     // Connect MCP manager to adaptation engine
     this.adaptationEngine.setMcpManager(this.mcpManager);
@@ -110,6 +119,16 @@ export class NeurocodeController implements vscode.Disposable {
   }
 
   // ─── Setup Methods ──────────────────────────────────────────────
+
+  /**
+   * Propagate API key to all subsystems that need it.
+   * REFACTORED: Centralised here instead of scattered across constructor + onDidChangeConfiguration.
+   */
+  private propagateApiKey(apiKey: string): void {
+    this.adaptationEngine.setApiKey(apiKey);
+    this.assignmentManager.setApiKey(apiKey);
+    this.scaffoldEngine.setApiKey(apiKey);
+  }
 
   /**
    * Wire MCP status changes to webview notifications.
@@ -148,7 +167,16 @@ export class NeurocodeController implements vscode.Disposable {
    * handling of WebviewMessage types.
    */
   private setupWebviewMessageRouter(): void {
-    this.webview.onMessage(async (message: WebviewMessage) => {
+    this.webview.onMessage(async (raw: WebviewMessage) => {
+      // REFACTORED: Validate incoming messages before processing.
+      // Webview is an untrusted execution environment.
+      const validation = validateWebviewMessage(raw);
+      if (!validation.valid) {
+        Logger.warn(`Invalid webview message rejected: ${validation.errors.join("; ")}`);
+        return;
+      }
+      const message = validation.message!;
+
       try {
         await this.handleWebviewMessage(message);
       } catch (error) {
@@ -549,6 +577,15 @@ export class NeurocodeController implements vscode.Disposable {
   // ─── Public API for Commands ────────────────────────────────────
 
   /**
+   * Public entry point for export progress command.
+   * REFACTORED: extension.ts command handler now delegates here,
+   * eliminating the duplicated save-dialog + writeFile logic.
+   */
+  async handleExportProgress(): Promise<void> {
+    await this.exportProgress();
+  }
+
+  /**
    * Show the preferences configuration panel.
    */
   showPreferencesPanel(): void {
@@ -623,6 +660,7 @@ export class NeurocodeController implements vscode.Disposable {
     this.adaptationEngine.dispose();
     this.preferenceManager.dispose();
     this.assignmentManager.dispose();
+    this.configService.dispose();
     this.webview.dispose();
     Logger.log("NeurocodeController disposed");
   }

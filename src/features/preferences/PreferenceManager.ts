@@ -59,49 +59,31 @@ export class PreferenceManager implements vscode.Disposable {
       return;
     }
 
+    // REFACTORED: Replaced 40+ lines of repetitive get/compare/set with a helper.
     let changed = false;
 
-    const fontSize = config.get<number>("fontSize");
-    if (fontSize !== undefined && fontSize !== this.currentPreferences.visual.fontSize) {
-      this.currentPreferences.visual.fontSize = fontSize;
-      changed = true;
-    }
+    const sync = <T>(key: string, current: T, setter: (v: T) => void): void => {
+      const value = config.get<T>(key);
+      if (value !== undefined && value !== current) {
+        setter(value);
+        changed = true;
+      }
+    };
 
-    const fontFamily = config.get<string>("fontFamily");
-    if (fontFamily !== undefined && fontFamily !== this.currentPreferences.visual.fontFamily) {
-      this.currentPreferences.visual.fontFamily = fontFamily;
-      changed = true;
-    }
-
-    const lineSpacing = config.get<number>("lineSpacing");
-    if (lineSpacing !== undefined && lineSpacing !== this.currentPreferences.visual.lineSpacing) {
-      this.currentPreferences.visual.lineSpacing = lineSpacing;
-      changed = true;
-    }
-
-    const colorScheme = config.get<string>("colorScheme");
-    if (colorScheme !== undefined && colorScheme !== this.currentPreferences.visual.colorScheme) {
-      this.currentPreferences.visual.colorScheme = colorScheme as any;
-      changed = true;
-    }
-
-    const focusMode = config.get<boolean>("focusMode");
-    if (focusMode !== undefined && focusMode !== this.currentPreferences.cognitive.focusMode) {
-      this.currentPreferences.cognitive.focusMode = focusMode;
-      changed = true;
-    }
-
-    const tts = config.get<boolean>("textToSpeech");
-    if (tts !== undefined && tts !== this.currentPreferences.cognitive.textToSpeech) {
-      this.currentPreferences.cognitive.textToSpeech = tts;
-      changed = true;
-    }
-
-    const taskGranularity = config.get<string>("taskGranularity") as "combined" | "standard" | "detailed" | undefined;
-    if (taskGranularity && taskGranularity !== this.currentPreferences.structural.taskGranularity) {
-      this.currentPreferences.structural.taskGranularity = taskGranularity;
-      changed = true;
-    }
+    sync("fontSize", this.currentPreferences.visual.fontSize,
+      (v) => { this.currentPreferences.visual.fontSize = v; });
+    sync("fontFamily", this.currentPreferences.visual.fontFamily,
+      (v) => { this.currentPreferences.visual.fontFamily = v; });
+    sync("lineSpacing", this.currentPreferences.visual.lineSpacing,
+      (v) => { this.currentPreferences.visual.lineSpacing = v; });
+    sync("colorScheme", this.currentPreferences.visual.colorScheme,
+      (v) => { this.currentPreferences.visual.colorScheme = v as any; });
+    sync("focusMode", this.currentPreferences.cognitive.focusMode,
+      (v) => { this.currentPreferences.cognitive.focusMode = v; });
+    sync("textToSpeech", this.currentPreferences.cognitive.textToSpeech,
+      (v) => { this.currentPreferences.cognitive.textToSpeech = v; });
+    sync("taskGranularity", this.currentPreferences.structural.taskGranularity,
+      (v) => { this.currentPreferences.structural.taskGranularity = v as any; });
 
     if (changed) {
       this.save();
