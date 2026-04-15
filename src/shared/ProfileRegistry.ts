@@ -17,7 +17,6 @@ import type {
   NeurodiversityProfile,
   NeurodiversityType,
   UserPreferences,
-  VisualModification,
 } from "./types";
 import type { AdaptationStrategy } from "@features/adaptive/strategies";
 

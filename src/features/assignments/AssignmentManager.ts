@@ -47,12 +47,14 @@ export class AssignmentManager implements vscode.Disposable {
    */
   async importFromFile(filePath: string): Promise<Assignment> {
     try {
+      // extract file content as buffer
       const uri = vscode.Uri.file(filePath);
       const content = await vscode.workspace.fs.readFile(uri);
       const buffer = Buffer.from(content);
 
       Logger.log(`Importing PDF assignment: ${path.basename(filePath)}`);
-
+      
+      // parse the PDF and extract structured assignment data by LLM (with fallback to heuristic parsing if no API key)
       const assignment = await parseAssignmentFile(buffer, filePath, this.apiKey);
       this.currentAssignment = assignment;
       this.initializeProgress(assignment.metadata.id);
