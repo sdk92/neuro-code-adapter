@@ -206,11 +206,7 @@ export class NeurocodeController implements vscode.Disposable {
 
       // Triggered by: "Open Assignment" button in WebviewManager dashboard
       case "open_assignment":
-        if (message.filePath) {
-          await this.loadAssignment(message.filePath);
-        } else {
-          await this.promptAndLoadAssignment();
-        }
+        await this.promptAndLoadAssignment();
         break;
 
       // Triggered by: "Configure Preferences" button in WebviewManager dashboard
@@ -262,41 +258,6 @@ export class NeurocodeController implements vscode.Disposable {
   }
 
   // ─── Core Workflows ─────────────────────────────────────────────
-
-  /**
-   * Load an assignment from a file path.
-   * Mirrors Cline Controller.initTask() pattern (line 230):
-   *   1. clearTask() first — ensures no existing task before starting new one
-   *   2. Initialize all tracking state
-   *   3. Start the task
-   */
-  async loadAssignment(filePath: string): Promise<void> {
-    try {
-      this.clearSession();
-
-      const assignment = await vscode.window.withProgress(
-        {
-          location: vscode.ProgressLocation.Notification,
-          title: `NeuroCode: Loading ${filePath.split(/[/\\]/).pop()}...`,
-          cancellable: false,
-        },
-        () => this.assignmentManager.importFromFile(filePath)
-      );
-
-      this.webview.postMessage({ type: "assignment_loaded", assignment });
-      await this.renderAdaptiveView(assignment);
-      this.postStateToWebview();
-
-      vscode.window.showInformationMessage(
-        `NeuroCode: Loaded "${assignment.metadata.title}" (${assignment.sections.length} sections)`
-      );
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      Logger.error("Failed to load assignment:", error);
-      vscode.window.showErrorMessage(`NeuroCode: Failed to load — ${msg}`);
-      this.webview.sendError("load_failed", msg);
-    }
-  }
 
   /**
    * Prompt user to select an assignment file.

@@ -183,7 +183,7 @@ export class WebviewManager implements vscode.WebviewViewProvider {
 
     function sendMessage(type) {
       if (type === 'open_assignment') {
-        vscode.postMessage({ type: 'open_assignment', filePath: '' });
+        vscode.postMessage({ type: 'open_assignment' });
       } else if (type === 'configure_prefs') {
         vscode.postMessage({ type: 'open_preferences' });
       }

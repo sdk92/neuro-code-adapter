@@ -46,7 +46,7 @@ export interface ExtensionState {
 export type WebviewMessage =
   | { type: "ready" }
   | { type: "request_state" }
-  | { type: "open_assignment"; filePath: string }
+  | { type: "open_assignment" }
   | { type: "open_preferences" }
   | { type: "request_help"; question: string; sectionId?: string }
   | { type: "set_profile"; profile: NeurodiversityType }

@@ -23,9 +23,7 @@ type MessageSchema = Record<string, FieldSpec>;
 const MESSAGE_SCHEMAS: Record<string, MessageSchema> = {
   ready: {},
   request_state: {},
-  open_assignment: {
-    filePath: { type: "string", required: false },
-  },
+  open_assignment: {},
   open_preferences: {},
   request_help: {
     question: { type: "string", required: false },
