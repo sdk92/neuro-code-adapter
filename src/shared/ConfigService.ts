@@ -13,7 +13,13 @@ import { Logger } from "./logger";
 // ─── Config snapshot ─────────────────────────────────────────────────────────
 
 export interface NeurocodeConfig {
+  // LLM provider settings
+  llmProvider: "anthropic" | "openai";
+  llmModel: string;
+  llmBaseUrl: string;
   anthropicApiKey: string;
+  openaiApiKey: string;
+  // Profile & UI settings
   neurodiversityProfile: string;
   fontSize: number;
   fontFamily: string;
@@ -59,10 +65,12 @@ export class ConfigService implements vscode.Disposable {
   }
 
   /**
-   * Get the current API key (convenience shortcut).
+   * Get the active API key based on the current provider type.
    */
-  get apiKey(): string {
-    return this.current.anthropicApiKey;
+  get activeApiKey(): string {
+    return this.current.llmProvider === "openai"
+      ? this.current.openaiApiKey
+      : this.current.anthropicApiKey;
   }
 
   /**
@@ -79,7 +87,11 @@ export class ConfigService implements vscode.Disposable {
   private static readFromVscode(): NeurocodeConfig {
     const c = vscode.workspace.getConfiguration("neurocode");
     return {
+      llmProvider: c.get<string>("llmProvider", "anthropic") as NeurocodeConfig["llmProvider"],
+      llmModel: c.get<string>("llmModel", ""),
+      llmBaseUrl: c.get<string>("llmBaseUrl", ""),
       anthropicApiKey: c.get<string>("anthropicApiKey", ""),
+      openaiApiKey: c.get<string>("openaiApiKey", ""),
       neurodiversityProfile: c.get<string>("neurodiversityProfile", "neurotypical"),
       fontSize: c.get<number>("fontSize", 14),
       fontFamily: c.get<string>("fontFamily", "default"),

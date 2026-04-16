@@ -14,7 +14,7 @@
     "commands": [
       { "command": "neurocode.openAssignment", "title": "NeuroCode: Open Assignment" },
       { "command": "neurocode.configurePreferences", "title": "NeuroCode: Configure Preferences" },
-{ "command": "neurocode.getAIHelp", "title": "NeuroCode: Get AI Help" },
+      { "command": "neurocode.getAIHelp", "title": "NeuroCode: Get AI Help" },
       { "command": "neurocode.scaffoldProject", "title": "NeuroCode: Scaffold Project" },
       { "command": "neurocode.showDashboard", "title": "NeuroCode: Show Dashboard" },
       { "command": "neurocode.exportProgress", "title": "NeuroCode: Export Progress" }
@@ -98,10 +98,35 @@
           "default": "",
           "description": "MCP server endpoint URL"
         },
+        "neurocode.llmProvider": {
+          "type": "string",
+          "enum": ["anthropic", "openai"],
+          "enumDescriptions": [
+            "Anthropic Claude API (supports direct PDF input)",
+            "OpenAI-compatible API (OpenAI, Ollama, LM Studio, Azure, etc.)"
+          ],
+          "default": "anthropic",
+          "description": "LLM provider for adaptation and scaffolding"
+        },
+        "neurocode.llmModel": {
+          "type": "string",
+          "default": "",
+          "description": "Model identifier (leave empty for provider default, e.g. claude-sonnet-4-6, gpt-4o)"
+        },
+        "neurocode.llmBaseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Custom API base URL for OpenAI-compatible endpoints (e.g. http://localhost:11434/v1 for Ollama)"
+        },
         "neurocode.anthropicApiKey": {
           "type": "string",
           "default": "",
-          "description": "Anthropic API key for Claude integration"
+          "description": "API key for Anthropic Claude"
+        },
+        "neurocode.openaiApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for OpenAI-compatible providers (leave empty for local models like Ollama)"
         }
       }
     }

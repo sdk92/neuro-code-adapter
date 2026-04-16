@@ -30,6 +30,8 @@ import * as vscode from "vscode";
 import { WebviewManager } from "@core/webview/WebviewManager";
 import { McpManager } from "@services/mcp/McpManager";
 import { AdaptationEngine } from "@services/llm/AdaptationEngine";
+import type { LlmProvider } from "@services/llm/LlmProvider";
+import { tryCreateProvider } from "@services/llm/ProviderFactory";
 import { PreferenceManager } from "@features/preferences/PreferenceManager";
 import { AssignmentManager } from "@features/assignments/AssignmentManager";
 import { AdaptiveRenderer } from "@features/adaptive/AdaptiveRenderer";
@@ -77,6 +79,9 @@ export class NeurocodeController implements vscode.Disposable {
   // ─── Concurrency guards (inspired by Cline Controller line 427) ─
   private adaptationInProgress = false;
 
+  // ─── Current LLM provider ──────────────────────────────────────
+  private currentProvider: LlmProvider | null = null;
+
 
   constructor(
     context: vscode.ExtensionContext,
@@ -98,17 +103,15 @@ export class NeurocodeController implements vscode.Disposable {
     this.setupPreferenceCallbacks();
     this.setupWebviewMessageRouter();
 
-    // REFACTORED: API key now managed by ConfigService.
-    // All subsystems subscribe to config changes — no manual propagation needed.
-    const apiKey = configService.apiKey;
-    if (apiKey) {
-      this.propagateApiKey(apiKey);
-    }
+    // REFACTORED: Create LLM provider from config and propagate to all subsystems.
+    this.rebuildProvider(configService.getConfig());
 
-    // Subscribe to future API key changes
+    // Subscribe to future config changes that affect the provider
+    const providerKeys = new Set(["llmProvider", "llmModel", "llmBaseUrl", "anthropicApiKey", "openaiApiKey"]);
     configService.onChange((config, changed) => {
-      if (changed.has("anthropicApiKey")) {
-        this.propagateApiKey(config.anthropicApiKey);
+      const affectsProvider = [...changed].some((k) => providerKeys.has(k));
+      if (affectsProvider) {
+        this.rebuildProvider(config);
       }
     });
 
@@ -121,13 +124,35 @@ export class NeurocodeController implements vscode.Disposable {
   // ─── Setup Methods ──────────────────────────────────────────────
 
   /**
-   * Propagate API key to all subsystems that need it.
-   * REFACTORED: Centralised here instead of scattered across constructor + onDidChangeConfiguration.
+   * Build an LLM provider from config and propagate to all subsystems.
+   * REFACTORED: Replaces propagateApiKey(). Now provider-agnostic.
    */
-  private propagateApiKey(apiKey: string): void {
-    this.adaptationEngine.setApiKey(apiKey);
-    this.assignmentManager.setApiKey(apiKey);
-    this.scaffoldEngine.setApiKey(apiKey);
+  private rebuildProvider(config: ReturnType<ConfigService["getConfig"]>): void {
+    // Dispose old provider
+    this.currentProvider?.dispose();
+
+    // Resolve the active API key based on provider type
+    const apiKey = config.llmProvider === "openai"
+      ? config.openaiApiKey
+      : config.anthropicApiKey;
+
+    this.currentProvider = tryCreateProvider({
+      provider: config.llmProvider,
+      model: config.llmModel,
+      apiKey,
+      baseUrl: config.llmBaseUrl || undefined,
+    });
+
+    // Propagate to all subsystems
+    this.adaptationEngine.setProvider(this.currentProvider);
+    this.assignmentManager.setProvider(this.currentProvider);
+    this.scaffoldEngine.setProvider(this.currentProvider ?? undefined);
+
+    if (this.currentProvider) {
+      Logger.log(`LLM provider: ${this.currentProvider.name} (${this.currentProvider.model})`);
+    } else {
+      Logger.log("No LLM provider configured — rule-based fallback active");
+    }
   }
 
   /**
@@ -455,7 +480,7 @@ export class NeurocodeController implements vscode.Disposable {
 
     if (!this.scaffoldEngine.isAvailable) {
       vscode.window.showErrorMessage(
-        "NeuroCode: Set neurocode.anthropicApiKey in settings to use scaffolding."
+        "NeuroCode: Configure an LLM provider in settings to use scaffolding."
       );
       return;
     }

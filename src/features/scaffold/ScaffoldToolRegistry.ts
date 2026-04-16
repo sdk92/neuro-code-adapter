@@ -15,10 +15,8 @@
  *   2. Call ScaffoldToolRegistry.register(myTool)
  *   3. Done — the agentic loop and LLM will see it automatically
  */
-import type Anthropic from "@anthropic-ai/sdk";
 import type { NeurocodeToolDef } from "@shared/types";
-
-export type AnthropicTool = Anthropic.Tool;
+import type { LlmToolDef } from "@services/llm/LlmProvider";
 
 const tools = new Map<string, NeurocodeToolDef>();
 
@@ -52,18 +50,18 @@ export const ScaffoldToolRegistry = {
   },
 
   /**
-   * Build the Anthropic API tool array for the LLM.
-   * Optionally injects description hints (e.g. language-specific commands).
+   * Build the LLM tool definitions for the provider.
+   * REFACTORED: Returns provider-agnostic LlmToolDef[] instead of Anthropic.Tool[].
    *
    * @param hintsByTool - Map of tool name → string[] hints to append to description
    */
-  buildAnthropicTools(hintsByTool?: Map<string, string[]>): AnthropicTool[] {
+  buildLlmTools(hintsByTool?: Map<string, string[]>): LlmToolDef[] {
     return [...tools.values()].map((tool) => {
       const hints = hintsByTool?.get(tool.name);
       return {
         name: tool.name,
         description: tool.description(hints),
-        input_schema: tool.inputSchema as AnthropicTool["input_schema"],
+        inputSchema: tool.inputSchema,
       };
     });
   },

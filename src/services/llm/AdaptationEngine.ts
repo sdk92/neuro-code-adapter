@@ -3,14 +3,14 @@
  *
  * This is the intelligence core of NeuroCode Adapter. It:
  *   1. Assembles structured prompts from assignment content + user profile + session context
- *   2. Calls the LLM (via MCP tools or direct Anthropic API)
+ *   2. Calls the LLM (via MCP tools or direct LlmProvider)
  *   3. Validates responses against the predefined AdaptationResponse schema
  *   4. Falls back to rule-based adaptation if LLM is unavailable
  *
- * The response schema ensures "consistency and interpretability of generated views"
- * as required by the project specification.
+ * REFACTORED: Now uses the LlmProvider abstraction instead of direct Anthropic SDK.
+ * Any provider (Anthropic, OpenAI, Ollama, etc.) can be injected.
  */
-import Anthropic from "@anthropic-ai/sdk";
+import type { LlmProvider } from "./LlmProvider";
 import type { McpManager } from "@services/mcp/McpManager";
 import type {
   AdaptationRequest,
@@ -169,19 +169,23 @@ export function validateAdaptationResponse(raw: unknown): AdaptationResponse | n
 // ─── Engine Class ────────────────────────────────────────────────────────────
 
 export class AdaptationEngine {
-  private anthropicClient: Anthropic | null = null;
+  private provider: LlmProvider | null = null;
   private mcpManager: McpManager | null = null;
-  private apiKey: string = "";
 
   /**
-   * Initialize with Anthropic API key for direct LLM calls.
+   * Set the LLM provider for direct API calls.
+   * REFACTORED: Replaces setApiKey() — now accepts any LlmProvider.
    */
-  setApiKey(apiKey: string): void {
-    this.apiKey = apiKey;
-    if (apiKey) {
-      this.anthropicClient = new Anthropic({ apiKey });
-      Logger.log("AdaptationEngine: Anthropic client initialized");
+  setProvider(provider: LlmProvider | null): void {
+    this.provider = provider;
+    if (provider) {
+      Logger.log(`AdaptationEngine: provider set to ${provider.name} (${provider.model})`);
     }
+  }
+
+  /** Backward-compatible convenience — kept so callers that only have an API key still work. */
+  get isAvailable(): boolean {
+    return this.provider !== null;
   }
 
   /**
@@ -193,7 +197,7 @@ export class AdaptationEngine {
 
   /**
    * Generate an adapted view of assignment content.
-   * Tries MCP first, falls back to direct API, then rule-based.
+   * Tries MCP first, falls back to direct provider, then rule-based.
    */
   async generateAdaptation(request: AdaptationRequest): Promise<AdaptationResponse> {
     // Strategy 1: Use MCP server if connected
@@ -201,16 +205,16 @@ export class AdaptationEngine {
       try {
         return await this.generateViaMcp(request);
       } catch (error) {
-        Logger.warn("MCP adaptation failed, falling back to direct API:", error);
+        Logger.warn("MCP adaptation failed, falling back to direct provider:", error);
       }
     }
 
-    // Strategy 2: Use direct Anthropic API
-    if (this.anthropicClient) {
+    // Strategy 2: Use LLM provider
+    if (this.provider) {
       try {
-        return await this.generateViaApi(request);
+        return await this.generateViaProvider(request);
       } catch (error) {
-        Logger.warn("API adaptation failed, falling back to rule-based:", error);
+        Logger.warn("Provider adaptation failed, falling back to rule-based:", error);
       }
     }
 
@@ -246,31 +250,24 @@ export class AdaptationEngine {
   }
 
   /**
-   * Generate adaptation via direct Anthropic API call.
+   * Generate adaptation via LLM provider (provider-agnostic).
+   * REFACTORED: Uses LlmProvider.complete() instead of direct Anthropic SDK.
    */
-  private async generateViaApi(request: AdaptationRequest): Promise<AdaptationResponse> {
+  private async generateViaProvider(request: AdaptationRequest): Promise<AdaptationResponse> {
     const prompt = buildAdaptationPrompt(request);
 
-    const stream = this.anthropicClient!.messages.stream({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 64000,
+    const response = await this.provider!.complete({
       system: buildSystemPrompt(),
       messages: [{ role: "user", content: prompt }],
+      maxTokens: 64000,
     });
 
-    const response = await stream.finalMessage();
-
-    if (response.stop_reason === "max_tokens") {
+    if (response.stopReason === "max_tokens") {
       throw new Error("Response truncated: output exceeded max_tokens, JSON will be incomplete");
     }
 
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      throw new Error("No text in API response");
-    }
-
     // Extract JSON from response (may be wrapped in markdown code blocks)
-    let jsonStr = textBlock.text.trim();
+    let jsonStr = response.text.trim();
     const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) {
       jsonStr = jsonMatch[1].trim();
@@ -279,7 +276,7 @@ export class AdaptationEngine {
     const parsed = JSON.parse(jsonStr);
     const validated = validateAdaptationResponse(parsed);
     if (!validated) {
-      throw new Error("Invalid adaptation response schema from API");
+      throw new Error("Invalid adaptation response schema from provider");
     }
 
     return validated;
@@ -322,7 +319,8 @@ export class AdaptationEngine {
   }
 
   dispose(): void {
-    this.anthropicClient = null;
+    this.provider?.dispose();
+    this.provider = null;
     this.mcpManager = null;
   }
 }

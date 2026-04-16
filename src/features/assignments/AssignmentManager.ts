@@ -8,6 +8,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import type { Assignment } from "@shared/types";
+import type { LlmProvider } from "@services/llm/LlmProvider";
 import { Logger } from "@shared/logger";
 import { parseAssignmentFile } from "./parser";
 
@@ -24,7 +25,7 @@ export class AssignmentManager implements vscode.Disposable {
   private context: vscode.ExtensionContext;
   private currentAssignment: Assignment | null = null;
   private progress: Map<string, ProgressRecord> = new Map();
-  private apiKey: string = "";
+  private provider: LlmProvider | null = null;
 
   private static readonly PROGRESS_KEY = "neurocode.assignmentProgress";
 
@@ -38,8 +39,8 @@ export class AssignmentManager implements vscode.Disposable {
     }
   }
 
-  setApiKey(apiKey: string): void {
-    this.apiKey = apiKey;
+  setProvider(provider: LlmProvider | null): void {
+    this.provider = provider;
   }
 
   /**
@@ -54,8 +55,8 @@ export class AssignmentManager implements vscode.Disposable {
 
       Logger.log(`Importing PDF assignment: ${path.basename(filePath)}`);
       
-      // parse the PDF and extract structured assignment data by LLM (with fallback to heuristic parsing if no API key)
-      const assignment = await parseAssignmentFile(buffer, filePath, this.apiKey);
+      // parse the PDF and extract structured assignment data by LLM (with fallback to heuristic parsing if no provider)
+      const assignment = await parseAssignmentFile(buffer, filePath, this.provider ?? undefined);
       this.currentAssignment = assignment;
       this.initializeProgress(assignment.metadata.id);
       Logger.log(`Assignment loaded: ${assignment.metadata.title} (${assignment.sections.length} sections)`);
@@ -81,15 +82,15 @@ export class AssignmentManager implements vscode.Disposable {
 
     const filePath = uris[0].fsPath;
 
-    if (!this.apiKey) {
+    if (!this.provider) {
       const proceed = await vscode.window.showWarningMessage(
-        "PDF parsing works best with an Anthropic API key configured. " +
+        "PDF parsing works best with an LLM provider configured. " +
         "Without it, basic heuristic parsing will be used (less accurate). Continue?",
-        "Continue", "Configure API Key", "Cancel"
+        "Continue", "Configure Provider", "Cancel"
       );
 
-      if (proceed === "Configure API Key") {
-        await vscode.commands.executeCommand("workbench.action.openSettings", "neurocode.anthropicApiKey");
+      if (proceed === "Configure Provider") {
+        await vscode.commands.executeCommand("workbench.action.openSettings", "neurocode.llmProvider");
         return null;
       }
       if (proceed !== "Continue") { return null; }

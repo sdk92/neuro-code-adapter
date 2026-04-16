@@ -1,20 +1,15 @@
 /**
- * ScaffoldToolBuilder — Builds a tailored Claude tool set based on assignment content.
+ * ScaffoldToolBuilder — Builds a tailored LLM tool set based on assignment content.
  *
- * REFACTORED: Tool definitions now come from ScaffoldToolRegistry. 
+ * REFACTORED: Tool definitions now come from ScaffoldToolRegistry.
  * This file only handles:
  *   1. Collecting language/framework hints
- *   2. Asking the registry to build the Anthropic API tool array
+ *   2. Asking the registry to build the provider-agnostic tool array
  *   3. Building the system hint string
- *
- * The static tool definitions (execute_command, create_file, open_in_editor)
- * are now in tools/*.ts and registered via registerBuiltinTools().
  */
-import type Anthropic from "@anthropic-ai/sdk";
+import type { LlmToolDef } from "@services/llm/LlmProvider";
 import type { Assignment } from "@shared/types";
 import { ScaffoldToolRegistry } from "./ScaffoldToolRegistry";
-
-export type AnthropicTool = Anthropic.Tool;
 
 // ─── Language/Framework hints ────────────────────────────────────────────────
 
@@ -41,16 +36,10 @@ const TAG_HINTS = new Map<string, string>([
   ["pytest", "Add `pip install pytest`."],
 ]);
 
-/**
- * Register a language-specific scaffold hint at runtime.
- */
 export function registerLanguageHint(language: string, hint: string): void {
   LANGUAGE_HINTS.set(language.toLowerCase(), hint);
 }
 
-/**
- * Register a tag/framework-specific scaffold hint at runtime.
- */
 export function registerTagHint(tag: string, hint: string): void {
   TAG_HINTS.set(tag.toLowerCase(), hint);
 }
@@ -58,50 +47,35 @@ export function registerTagHint(tag: string, hint: string): void {
 // ─── Builder ────────────────────────────────────────────────────────────────
 
 export interface ScaffoldToolSet {
-  tools: AnthropicTool[];
+  tools: LlmToolDef[];
   systemHint: string;
 }
 
-/**
- * Build the tool set for a specific assignment.
- *
- * REFACTORED: Delegates to ScaffoldToolRegistry.buildAnthropicTools()
- * instead of maintaining a static array of tool definitions.
- */
 export function buildToolsForAssignment(assignment: Assignment): ScaffoldToolSet {
   const lang = assignment.metadata.language?.toLowerCase() ?? "";
   const tags = (assignment.metadata.tags ?? []).map((t) => t.toLowerCase());
 
-  // Collect hints relevant to this assignment
   const hints: string[] = [];
-
   const langHint = LANGUAGE_HINTS.get(lang);
   if (langHint) { hints.push(langHint); }
-
   for (const tag of tags) {
     const tagHint = TAG_HINTS.get(tag);
     if (tagHint) { hints.push(tagHint); }
   }
 
-  // Build hints map: only execute_command gets the language/framework hints
   const hintsByTool = new Map<string, string[]>();
   if (hints.length > 0) {
     hintsByTool.set("execute_command", hints);
   }
 
-  // Build Anthropic tool array from registry
-  const tools = ScaffoldToolRegistry.buildAnthropicTools(hintsByTool);
-
+  const tools = ScaffoldToolRegistry.buildLlmTools(hintsByTool);
   const systemHint = buildSystemHint(assignment, lang, tags, hints);
 
   return { tools, systemHint };
 }
 
 function buildSystemHint(
-  assignment: Assignment,
-  lang: string,
-  tags: string[],
-  hints: string[]
+  assignment: Assignment, lang: string, tags: string[], hints: string[]
 ): string {
   const lines = [
     `Assignment: "${assignment.metadata.title}"`,
@@ -117,6 +91,5 @@ function buildSystemHint(
     "2. Prefer minimal, correct scaffolding over feature-rich boilerplate.",
     hints.length > 0 ? `\nPreferred tooling hints:\n${hints.map((h) => `- ${h}`).join("\n")}` : "",
   ];
-
   return lines.filter(Boolean).join("\n");
 }

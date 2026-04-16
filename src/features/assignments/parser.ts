@@ -11,8 +11,7 @@
  *     No API key needed. Basic structure detection only.
  */
 import * as path from "path";
-import * as fs from "fs";
-import Anthropic from "@anthropic-ai/sdk";
+import type { LlmProvider } from "@services/llm/LlmProvider";
 import type { Assignment, AssignmentSection, AssignmentMetadata } from "@shared/types";
 import { Logger } from "@shared/logger";
 
@@ -147,24 +146,28 @@ Layout rules:
 Remember: Output ONLY the JSON object. No other text.`;
 
 /**
- * Send PDF directly to Claude as a base64 document (Tier 1).
+ * Send PDF directly to LLM as a base64 document (Tier 1).
  *
- * Bypasses pdf-parse entirely — Claude sees the PDF exactly as a student would:
- * layout, formulas, tables, code blocks, everything preserved.
+ * If the provider supports document input (e.g. Anthropic), the PDF is sent
+ * as-is — Claude sees the PDF exactly as a student would.
+ * If not (e.g. OpenAI), falls back to Tier 2 (text extraction + heuristics).
+ *
+ * REFACTORED: Uses LlmProvider instead of direct Anthropic SDK.
  */
 async function structureViaDirectPdf(
   pdfBuffer: Buffer,
-  apiKey: string,
+  provider: LlmProvider,
   fileName: string
 ): Promise<Assignment> {
-  const client = new Anthropic({ apiKey });
+  if (!provider.supportsDocumentInput) {
+    throw new Error("Provider does not support document input — falling back to Tier 2");
+  }
+
   const base64Data = pdfBuffer.toString("base64");
 
-  Logger.log(`Tier 1: Sending PDF directly to Claude: ${fileName} (${Math.round(pdfBuffer.length / 1024)}KB)`);
+  Logger.log(`Tier 1: Sending PDF to ${provider.name} (${provider.model}): ${fileName} (${Math.round(pdfBuffer.length / 1024)}KB)`);
 
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 8192,
+  const response = await provider.complete({
     system: PDF_STRUCTURING_PROMPT,
     messages: [
       {
@@ -172,14 +175,11 @@ async function structureViaDirectPdf(
         content: [
           {
             type: "document",
-            source: {
-              type: "base64",
-              media_type: "application/pdf",
-              data: base64Data,
-            },
-          } as any,
+            mediaType: "application/pdf",
+            data: base64Data,
+          },
           {
-            type: "text" as const,
+            type: "text",
             text: `Parse this programming assignment PDF ("${fileName}") into the structured JSON format specified in your instructions.`,
           },
         ],
@@ -190,16 +190,11 @@ async function structureViaDirectPdf(
         content: "{",
       },
     ],
+    maxTokens: 8192,
   });
 
-  const textBlock = response.content.find((b) => b.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("No text in Claude response");
-  }
-
-
-  // Claude's response continues from the prefilled "{", so prepend it back
-  let jsonStr = "{" + textBlock.text.trim();
+  // The response continues from the prefilled "{", so prepend it back
+  let jsonStr = "{" + response.text.trim();
   const jsonMatch = jsonStr.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/);
   if (jsonMatch) {
     jsonStr = jsonMatch[1].trim();
@@ -420,17 +415,20 @@ export function validateAndNormalise(raw: any, fileName: string): Assignment {
  *
  * @param fileBuffer - Raw PDF content as Buffer
  * @param fileName - Original file name (used for metadata)
- * @param apiKey - Optional Anthropic API key for Tier 1 (direct PDF to Claude)
+ * @param provider - Optional LlmProvider for Tier 1 (direct PDF to LLM)
+ *
+ * REFACTORED: Accepts LlmProvider instead of raw API key.
+ * Provider-agnostic: works with Anthropic (native PDF), OpenAI (text fallback), etc.
  */
 export async function parseAssignmentFile(
   fileBuffer: Buffer,
   fileName: string,
-  apiKey?: string
+  provider?: LlmProvider
 ): Promise<Assignment> {
-  // Tier 1: Direct PDF to Claude (best quality, requires API key)
-  if (apiKey) {
+  // Tier 1: Direct PDF to LLM (best quality, requires provider with document support)
+  if (provider) {
     try {
-      return await structureViaDirectPdf(fileBuffer, apiKey, fileName);
+      return await structureViaDirectPdf(fileBuffer, provider, fileName);
     } catch (error) {
       Logger.warn("Tier 1 (direct PDF) failed, falling back to heuristics:", error);
     }

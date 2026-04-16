@@ -17,7 +17,7 @@
  *   }
  */
 import * as vscode from "vscode";
-import Anthropic from "@anthropic-ai/sdk";
+import type { LlmProvider, LlmMessage, LlmResponseBlock } from "@services/llm/LlmProvider";
 import { ScaffoldToolRegistry } from "./ScaffoldToolRegistry";
 import { buildToolsForAssignment } from "./ScaffoldToolBuilder";
 import { disposeExecutor } from "./tools";
@@ -29,23 +29,27 @@ const MAX_ITERATIONS = 20;
 type ProgressCallback = (message: string, isDone: boolean) => void;
 
 export class ScaffoldEngine implements vscode.Disposable {
-  private anthropic: Anthropic | undefined;
+  private provider: LlmProvider | undefined;
   private inProgress = false;
 
-  setApiKey(apiKey: string): void {
-    this.anthropic = new Anthropic({ apiKey });
+  /**
+   * Set the LLM provider for the agentic loop.
+   * REFACTORED: Replaces setApiKey() — now accepts any LlmProvider.
+   */
+  setProvider(provider: LlmProvider | undefined): void {
+    this.provider = provider;
   }
 
   get isAvailable(): boolean {
-    return !!this.anthropic;
+    return !!this.provider;
   }
 
   /**
    * Run the scaffolding agentic loop.
    */
   async run(request: ScaffoldRequest, onProgress: ProgressCallback): Promise<void> {
-    if (!this.anthropic) {
-      throw new Error("No API key configured. Set neurocode.anthropicApiKey in settings.");
+    if (!this.provider) {
+      throw new Error("No LLM provider configured. Set provider in VS Code settings.");
     }
     if (this.inProgress) {
       throw new Error("Scaffolding already in progress.");
@@ -63,7 +67,6 @@ export class ScaffoldEngine implements vscode.Disposable {
   private async agenticLoop(request: ScaffoldRequest, onProgress: ProgressCallback): Promise<void> {
     const { tools, systemHint } = buildToolsForAssignment(request.assignment);
 
-    // Build system prompt from static rules + tool-contributed prompt fragments
     const toolPrompts = ScaffoldToolRegistry.buildPromptFragments();
 
     const systemPrompt = [
@@ -77,42 +80,51 @@ export class ScaffoldEngine implements vscode.Disposable {
 
     const userMessage = buildScaffoldPrompt(request);
 
-    const messages: Anthropic.MessageParam[] = [
+    // Provider-agnostic message history
+    const messages: LlmMessage[] = [
       { role: "user", content: userMessage },
     ];
 
     onProgress("Starting scaffolding...", false);
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
-      const response = await this.anthropic!.messages.create({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4096,
+      const response = await this.provider!.completeWithTools({
         system: systemPrompt,
-        tools,
         messages,
+        tools,
+        maxTokens: 4096,
       });
 
-      Logger.log(`[ScaffoldEngine] Iteration ${i + 1}, stop_reason: ${response.stop_reason}`);
+      Logger.log(`[ScaffoldEngine] Iteration ${i + 1}, stop_reason: ${response.stopReason}`);
 
       const toolUseBlocks = response.content.filter(
-        (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
+        (b): b is Extract<LlmResponseBlock, { type: "tool_use" }> => b.type === "tool_use"
       );
 
-      if (response.stop_reason === "end_turn" || toolUseBlocks.length === 0) {
+      if (response.stopReason === "end_turn" || toolUseBlocks.length === 0) {
         onProgress("Scaffolding complete.", true);
         break;
       }
 
-      messages.push({ role: "assistant", content: response.content });
+      // Append assistant response to history (preserve all content blocks)
+      messages.push({
+        role: "assistant",
+        content: response.content.map((b) => {
+          if (b.type === "tool_use") {
+            return { type: "tool_use" as const, id: b.id, name: b.name, input: b.input };
+          }
+          return { type: "text" as const, text: b.text };
+        }),
+      });
 
-      const toolResults: Anthropic.ToolResultBlockParam[] = [];
+      // Execute tools and collect results
+      const toolResultParts: Array<{ type: "tool_result"; toolUseId: string; content: string }> = [];
 
       for (const block of toolUseBlocks) {
-        // ── Registry-based dispatch (replaces switch chain) ──────────
         const result = await this.executeTool(block, request.workspaceRoot, onProgress);
-        toolResults.push({
+        toolResultParts.push({
           type: "tool_result",
-          tool_use_id: block.id,
+          toolUseId: block.id,
           content: result.success ? result.output : `ERROR: ${result.error}`,
         });
 
@@ -121,7 +133,7 @@ export class ScaffoldEngine implements vscode.Disposable {
         }
       }
 
-      messages.push({ role: "user", content: toolResults });
+      messages.push({ role: "user", content: toolResultParts });
     }
   }
 
@@ -132,7 +144,7 @@ export class ScaffoldEngine implements vscode.Disposable {
    * Unknown tools return a structured error that the LLM can recover from.
    */
   private async executeTool(
-    block: Anthropic.ToolUseBlock,
+    block: { id: string; name: string; input: Record<string, unknown> },
     workspaceRoot: string,
     onProgress: ProgressCallback
   ): Promise<ToolExecutionResult> {
