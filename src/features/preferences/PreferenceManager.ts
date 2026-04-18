@@ -8,7 +8,7 @@
  *   - Preference change notification to other modules
  */
 import * as vscode from "vscode";
-import type { NeurodiversityType, UserPreferences } from "@shared/types";
+import type { NeurodiversityType, UserPreferences, PartialUserPreferences } from "@shared/types";
 import { getDefaultPreferences } from "./profiles";
 import { Logger } from "@shared/logger";
 
@@ -105,8 +105,13 @@ export class PreferenceManager implements vscode.Disposable {
 
   /**
    * Update specific preferences (partial merge).
+   *
+   * REFACTORED (M2): Signature now takes PartialUserPreferences (deep partial)
+   * to match the shape the webview actually sends: each sub-object's fields
+   * are individually optional because the webview only includes the fields
+   * the user touched.
    */
-  updatePreferences(partial: Partial<UserPreferences>): void {
+  updatePreferences(partial: PartialUserPreferences): void {
     if (partial.visual) {
       this.currentPreferences.visual = { ...this.currentPreferences.visual, ...partial.visual };
     }

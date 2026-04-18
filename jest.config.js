@@ -10,6 +10,9 @@ module.exports = {
     "^@features/(.*)$": "<rootDir>/src/features/$1",
     "^@shared/(.*)$": "<rootDir>/src/shared/$1",
   },
-  // Mock vscode module (not available in test environment)
+  // M1: tests need jest globals which aren't in the main tsconfig.
+  transform: {
+    "^.+\\.ts$": ["ts-jest", { tsconfig: "tsconfig.test.json" }],
+  },
   modulePathIgnorePatterns: ["<rootDir>/dist/"],
 };

@@ -1,0 +1,1 @@
+  → Break every task into the smallest possible atomic sub-steps. Each "What to do" item should be a single, concrete action. Add extra acceptance criteria so the student always knows when they are done.

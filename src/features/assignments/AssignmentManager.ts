@@ -1,14 +1,14 @@
 /**
  * AssignmentManager — Handles assignment lifecycle.
  *
- * Assignments are PDF-only. The PDF is parsed via a two-tier pipeline (parser.ts):
- *   Tier 1: PDF sent directly to Claude (requires API key) — best quality
- *   Tier 2: pdf-parse text extraction → heuristic parsing (offline fallback)
+ * REFACTORED (M1): Now holds a PromptBuilder and forwards it to parseAssignmentFile
+ * so Tier 1 (direct PDF parsing) uses template-driven prompts.
  */
 import * as vscode from "vscode";
 import * as path from "path";
 import type { Assignment } from "@shared/types";
 import type { LlmProvider } from "@services/llm/LlmProvider";
+import type { PromptBuilder } from "@services/prompts";
 import { Logger } from "@shared/logger";
 import { parseAssignmentFile } from "./parser";
 
@@ -26,6 +26,7 @@ export class AssignmentManager implements vscode.Disposable {
   private currentAssignment: Assignment | null = null;
   private progress: Map<string, ProgressRecord> = new Map();
   private provider: LlmProvider | null = null;
+  private promptBuilder: PromptBuilder | null = null;
 
   private static readonly PROGRESS_KEY = "neurocode.assignmentProgress";
 
@@ -43,20 +44,25 @@ export class AssignmentManager implements vscode.Disposable {
     this.provider = provider;
   }
 
-  /**
-   * Import a PDF assignment from a file path.
-   */
+  /** REFACTORED: inject the builder used by parser.ts Tier 1 path. */
+  setPromptBuilder(builder: PromptBuilder): void {
+    this.promptBuilder = builder;
+  }
+
   async importFromFile(filePath: string): Promise<Assignment> {
     try {
-      // extract file content as buffer
       const uri = vscode.Uri.file(filePath);
       const content = await vscode.workspace.fs.readFile(uri);
       const buffer = Buffer.from(content);
 
       Logger.log(`Importing PDF assignment: ${path.basename(filePath)}`);
-      
-      // parse the PDF and extract structured assignment data by LLM (with fallback to heuristic parsing if no provider)
-      const assignment = await parseAssignmentFile(buffer, filePath, this.provider ?? undefined);
+
+      const assignment = await parseAssignmentFile(
+        buffer,
+        filePath,
+        this.provider ?? undefined,
+        this.promptBuilder ?? undefined,
+      );
       this.currentAssignment = assignment;
       this.initializeProgress(assignment.metadata.id);
       Logger.log(`Assignment loaded: ${assignment.metadata.title} (${assignment.sections.length} sections)`);
@@ -67,9 +73,6 @@ export class AssignmentManager implements vscode.Disposable {
     }
   }
 
-  /**
-   * Prompt user to select a PDF assignment file.
-   */
   async promptImport(): Promise<Assignment | null> {
     const uris = await vscode.window.showOpenDialog({
       canSelectFiles: true,
@@ -86,9 +89,8 @@ export class AssignmentManager implements vscode.Disposable {
       const proceed = await vscode.window.showWarningMessage(
         "PDF parsing works best with an LLM provider configured. " +
         "Without it, basic heuristic parsing will be used (less accurate). Continue?",
-        "Continue", "Configure Provider", "Cancel"
+        "Continue", "Configure Provider", "Cancel",
       );
-
       if (proceed === "Configure Provider") {
         await vscode.commands.executeCommand("workbench.action.openSettings", "neurocode.llmProvider");
         return null;
@@ -108,9 +110,7 @@ export class AssignmentManager implements vscode.Disposable {
     }
   }
 
-  getCurrentAssignment(): Assignment | null {
-    return this.currentAssignment;
-  }
+  getCurrentAssignment(): Assignment | null { return this.currentAssignment; }
 
   getProgress(): ProgressRecord | null {
     if (!this.currentAssignment) { return null; }
@@ -118,10 +118,7 @@ export class AssignmentManager implements vscode.Disposable {
   }
 
   async exportProgress(): Promise<string> {
-    if (!this.currentAssignment) {
-      throw new Error("No assignment loaded");
-    }
-
+    if (!this.currentAssignment) { throw new Error("No assignment loaded"); }
     const record = this.progress.get(this.currentAssignment.metadata.id);
     const report = {
       assignment: this.currentAssignment.metadata,
@@ -131,7 +128,6 @@ export class AssignmentManager implements vscode.Disposable {
         : 0,
       exportedAt: new Date().toISOString(),
     };
-
     return JSON.stringify(report, null, 2);
   }
 
@@ -153,13 +149,9 @@ export class AssignmentManager implements vscode.Disposable {
 
   private saveProgress(): void {
     const obj: Record<string, ProgressRecord> = {};
-    for (const [id, record] of this.progress) {
-      obj[id] = record;
-    }
+    for (const [id, record] of this.progress) { obj[id] = record; }
     this.context.globalState.update(AssignmentManager.PROGRESS_KEY, obj);
   }
 
-  dispose(): void {
-    this.saveProgress();
-  }
+  dispose(): void { this.saveProgress(); }
 }

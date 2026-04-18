@@ -9,7 +9,6 @@ import type {
   AdaptationResponse,
   Assignment,
   McpServerInfo,
-  NeurodiversityType,
   ScaffoldProgress,
   UserPreferences,
 } from "./types";
@@ -42,18 +41,8 @@ export interface ExtensionState {
 }
 
 // ─── Webview → Extension Messages ────────────────────────────────────────────
+// REFACTORED (M2): WebviewMessage is now inferred from the Zod schema in
+// @shared/schemas/webview-messages. Keeping it as a re-export preserves the
+// existing import path `@shared/messages` used by ~30 call sites.
 
-export type WebviewMessage =
-  | { type: "ready" }
-  | { type: "request_state" }
-  | { type: "open_assignment" }
-  | { type: "open_preferences" }
-  | { type: "request_help"; question: string; sectionId?: string }
-  | { type: "set_profile"; profile: NeurodiversityType }
-  | { type: "section_viewed"; sectionId: string }
-  | { type: "export_progress" }
-  | { type: "connect_mcp"; url: string; transport?: "stdio" | "streamableHttp" }
-  | { type: "disconnect_mcp" }
-  | { type: "request_scaffold" }
-  | { type: "apply_preferences"; preferences: Partial<UserPreferences> }
-  | { type: "scaffold_approval_response"; toolUseId: string; approved: boolean };
+export type { WebviewMessage } from "./schemas";

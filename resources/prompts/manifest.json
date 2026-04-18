@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "manifestVersion": "1.0.0",
+  "description": "NeuroCode prompt template manifest. Each entry maps a stable template ID to a file path (relative to this manifest) and a version. Editing a template body requires bumping its version so that evaluation telemetry can be attributed correctly. See docs/prompts.md.",
+  "templates": {
+    "adaptation.system": {
+      "path": "adaptation/system.md",
+      "version": "1.0.0",
+      "description": "System prompt for LLM-based adaptation generation.",
+      "requiredVars": []
+    },
+    "adaptation.user": {
+      "path": "adaptation/user.md",
+      "version": "1.0.0",
+      "description": "User prompt template for adaptation. Fragment-composed with granularity.* and request.*",
+      "requiredVars": [
+        "profileLabel",
+        "assignmentTitle",
+        "language",
+        "difficulty",
+        "sectionContent",
+        "fontSize",
+        "lineSpacing",
+        "chunkSize",
+        "progressiveDisclosure",
+        "simplifiedLanguage",
+        "showExamples",
+        "granularity"
+      ]
+    },
+    "adaptation.fragment.granularity.combined": {
+      "path": "adaptation/fragments/granularity-combined.md",
+      "version": "1.0.0",
+      "description": "Appended when taskGranularity=combined.",
+      "requiredVars": []
+    },
+    "adaptation.fragment.granularity.standard": {
+      "path": "adaptation/fragments/granularity-standard.md",
+      "version": "1.0.0",
+      "description": "Appended when taskGranularity=standard.",
+      "requiredVars": []
+    },
+    "adaptation.fragment.granularity.detailed": {
+      "path": "adaptation/fragments/granularity-detailed.md",
+      "version": "1.0.0",
+      "description": "Appended when taskGranularity=detailed.",
+      "requiredVars": []
+    },
+    "adaptation.fragment.request.full_adaptation": {
+      "path": "adaptation/fragments/request-full.md",
+      "version": "1.0.0",
+      "description": "Appended when requestType=full_adaptation.",
+      "requiredVars": []
+    },
+    "adaptation.fragment.request.help_request": {
+      "path": "adaptation/fragments/request-help.md",
+      "version": "1.0.0",
+      "description": "Appended when requestType=help_request.",
+      "requiredVars": []
+    },
+    "pdf-structuring.system": {
+      "path": "pdf-structuring/system.md",
+      "version": "1.0.0",
+      "description": "System prompt for Tier 1 PDF → structured JSON conversion.",
+      "requiredVars": []
+    },
+    "pdf-structuring.user": {
+      "path": "pdf-structuring/user.md",
+      "version": "1.0.0",
+      "description": "User prompt that accompanies the PDF document input.",
+      "requiredVars": ["fileName"]
+    }
+  }
+}

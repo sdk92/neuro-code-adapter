@@ -7,17 +7,40 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Education", "Other"],
-  "activationEvents": ["onStartupFinished"],
+  "categories": [
+    "Education",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
-      { "command": "neurocode.openAssignment", "title": "NeuroCode: Open Assignment" },
-      { "command": "neurocode.configurePreferences", "title": "NeuroCode: Configure Preferences" },
-      { "command": "neurocode.getAIHelp", "title": "NeuroCode: Get AI Help" },
-      { "command": "neurocode.scaffoldProject", "title": "NeuroCode: Scaffold Project" },
-      { "command": "neurocode.showDashboard", "title": "NeuroCode: Show Dashboard" },
-      { "command": "neurocode.exportProgress", "title": "NeuroCode: Export Progress" }
+      {
+        "command": "neurocode.openAssignment",
+        "title": "NeuroCode: Open Assignment"
+      },
+      {
+        "command": "neurocode.configurePreferences",
+        "title": "NeuroCode: Configure Preferences"
+      },
+      {
+        "command": "neurocode.getAIHelp",
+        "title": "NeuroCode: Get AI Help"
+      },
+      {
+        "command": "neurocode.scaffoldProject",
+        "title": "NeuroCode: Scaffold Project"
+      },
+      {
+        "command": "neurocode.showDashboard",
+        "title": "NeuroCode: Show Dashboard"
+      },
+      {
+        "command": "neurocode.exportProgress",
+        "title": "NeuroCode: Export Progress"
+      }
     ],
     "viewsContainers": {
       "activitybar": [
@@ -40,15 +63,26 @@
     "configuration": {
       "title": "NeuroCode Adapter",
       "properties": {
-"neurocode.neurodiversityProfile": {
+        "neurocode.neurodiversityProfile": {
           "type": "string",
-          "enum": ["neurotypical", "dyslexia", "autism", "adhd"],
+          "enum": [
+            "neurotypical",
+            "dyslexia",
+            "autism",
+            "adhd"
+          ],
           "default": "neurotypical",
           "description": "Select your neurodiversity profile"
         },
         "neurocode.colorScheme": {
           "type": "string",
-          "enum": ["default", "high-contrast", "warm", "cool", "pastel"],
+          "enum": [
+            "default",
+            "high-contrast",
+            "warm",
+            "cool",
+            "pastel"
+          ],
           "default": "default",
           "description": "Visual color scheme"
         },
@@ -61,15 +95,21 @@
         },
         "neurocode.fontFamily": {
           "type": "string",
-          "enum": ["default", "OpenDyslexic", "Lexie Readable", "Comic Sans MS", "Atkinson Hyperlegible"],
+          "enum": [
+            "default",
+            "OpenDyslexic",
+            "Lexie Readable",
+            "Comic Sans MS",
+            "Atkinson Hyperlegible"
+          ],
           "default": "default",
           "description": "Font family for adaptive views"
         },
         "neurocode.lineSpacing": {
           "type": "number",
           "default": 1.5,
-          "minimum": 1.0,
-          "maximum": 3.0,
+          "minimum": 1,
+          "maximum": 3,
           "description": "Line height multiplier"
         },
         "neurocode.focusMode": {
@@ -84,7 +124,11 @@
         },
         "neurocode.taskGranularity": {
           "type": "string",
-          "enum": ["combined", "standard", "detailed"],
+          "enum": [
+            "combined",
+            "standard",
+            "detailed"
+          ],
           "enumDescriptions": [
             "Merge related tasks into broad milestones",
             "Keep original task structure from the assignment",
@@ -100,7 +144,10 @@
         },
         "neurocode.llmProvider": {
           "type": "string",
-          "enum": ["anthropic", "openai"],
+          "enum": [
+            "anthropic",
+            "openai"
+          ],
           "enumDescriptions": [
             "Anthropic Claude API (supports direct PDF input)",
             "OpenAI-compatible API (OpenAI, Ollama, LM Studio, Azure, etc.)"
@@ -139,15 +186,19 @@
     "test": "node --experimental-vm-modules node_modules/.bin/jest"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.x",
     "@types/vscode": "^1.85.0",
     "esbuild": "^0.24.0",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.9",
     "typescript": "^5.3.0"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "marked": "^15.0.0",
-    "pdf-parse": "^1.1.1"
+    "pdf-parse": "^1.1.1",
+    "zod": "^4.3.6"
   }
 }

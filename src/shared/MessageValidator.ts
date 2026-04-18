@@ -1,149 +1,75 @@
 /**
  * MessageValidator — Runtime validation for webview messages.
  *
- * Problem solved: handleWebviewMessage trusted all incoming message fields
- * without validation. Webview is an untrusted execution environment — malformed
- * messages could cause runtime errors or unexpected behavior.
+ * REFACTORED (M2): Hand-rolled FieldSpec table and typeof loop replaced
+ * with Zod's discriminated union in @shared/schemas/webview-messages.
  *
- * Uses a lightweight schema-based approach (no Zod dependency needed).
- * Each message type declares required fields and their expected types.
+ * Contract preserved:
+ *   - Same ValidationResult return shape (valid / errors / message)
+ *   - Same Logger.warn side effect on failure
+ *   - Same public export: validateWebviewMessage, registerAllowedProfile
+ *
+ * What improved:
+ *   - The `message as unknown as WebviewMessage` double-cast is gone —
+ *     Zod's z.infer gives a genuinely validated type.
+ *   - Deep validation: apply_preferences.preferences.visual.fontSize is
+ *     now checked against its actual range [10, 28] instead of just
+ *     "is this an object".
+ *   - Error messages include path context ("preferences.visual.fontSize:
+ *     expected number ≥ 10, got 5") instead of just "expected object".
+ *   - One source of truth: WebviewMessage type and validator are literally
+ *     the same object. Adding a new message type is one edit in
+ *     webview-messages.ts, not two edits here + in messages.ts.
  */
-import type { WebviewMessage } from "./messages";
+import type { WebviewMessage } from "./schemas";
+import { WebviewMessageSchema, registerProfileType } from "./schemas";
 import { Logger } from "./logger";
-
-// ─── Validation schema per message type ──────────────────────────────────────
-
-interface FieldSpec {
-  type: "string" | "boolean" | "number" | "object";
-  required: boolean;
-}
-
-type MessageSchema = Record<string, FieldSpec>;
-
-const MESSAGE_SCHEMAS: Record<string, MessageSchema> = {
-  ready: {},
-  request_state: {},
-  open_assignment: {},
-  open_preferences: {},
-  request_help: {
-    question: { type: "string", required: false },
-    sectionId: { type: "string", required: false },
-  },
-  set_profile: {
-    profile: { type: "string", required: true },
-  },
-  section_viewed: {
-    sectionId: { type: "string", required: true },
-  },
-  export_progress: {},
-  connect_mcp: {
-    url: { type: "string", required: true },
-    transport: { type: "string", required: false },
-  },
-  disconnect_mcp: {},
-  request_scaffold: {},
-  apply_preferences: {
-    preferences: { type: "object", required: true },
-  },
-  scaffold_approval_response: {
-    toolUseId: { type: "string", required: true },
-    approved: { type: "boolean", required: true },
-  },
-};
-
-// ─── Allowed values for constrained fields ───────────────────────────────────
-
-const ALLOWED_PROFILES = new Set([
-  "neurotypical", "dyslexia", "autism", "adhd",
-]);
-
-const ALLOWED_TRANSPORTS = new Set(["stdio", "streamableHttp"]);
-
-// ─── Validation result ───────────────────────────────────────────────────────
+import type { ZodIssue } from "zod";
 
 export interface ValidationResult {
   valid: boolean;
   errors: string[];
-  /** The sanitised message (with defaults applied), or null if invalid */
   message: WebviewMessage | null;
 }
-
-// ─── Validator ───────────────────────────────────────────────────────────────
 
 /**
  * Validate and sanitise an incoming webview message.
  *
- * Returns a ValidationResult with:
- *   - valid: whether the message passed all checks
- *   - errors: list of validation errors (empty if valid)
- *   - message: the sanitised message, or null if invalid
+ * Returns a result object — never throws. Callers decide how to handle
+ * invalid messages (the controller logs and drops them).
  */
 export function validateWebviewMessage(raw: unknown): ValidationResult {
-  const errors: string[] = [];
+  const result = WebviewMessageSchema.safeParse(raw);
 
-  // Basic shape check
-  if (!raw || typeof raw !== "object") {
-    return { valid: false, errors: ["Message is not an object"], message: null };
+  if (result.success) {
+    return { valid: true, errors: [], message: result.data };
   }
 
-  const msg = raw as Record<string, unknown>;
+  const errors = result.error.issues.map(formatIssue);
+  const type = typeof raw === "object" && raw && "type" in raw ? String((raw as { type: unknown }).type) : "<unknown>";
+  Logger.warn(`Webview message validation failed for "${type}": ${errors.join("; ")}`);
+  return { valid: false, errors, message: null };
+}
 
-  // Type field is mandatory
-  if (typeof msg.type !== "string") {
-    return { valid: false, errors: ["Missing or invalid 'type' field"], message: null };
+/**
+ * Format a Zod issue into the terse single-line messages the old validator produced.
+ * Zod's built-in messages already say things like "Expected string, received number"
+ * and "Required" — we just prefix them with the field path.
+ */
+function formatIssue(issue: ZodIssue): string {
+  const path = issue.path.length > 0 ? issue.path.join(".") : "<root>";
+  // "Required" → "Missing required field <path>" to match the old validator's phrasing
+  // that existing callers may grep for.
+  if (issue.code === "invalid_type" && issue.message === "Required") {
+    return `Missing required field "${path}"`;
   }
-
-  const type = msg.type;
-
-  // Check if the type is recognized
-  const schema = MESSAGE_SCHEMAS[type];
-  if (!schema) {
-    return { valid: false, errors: [`Unknown message type: "${type}"`], message: null };
-  }
-
-  // Validate each field against the schema
-  for (const [field, spec] of Object.entries(schema)) {
-    const value = msg[field];
-
-    if (spec.required && (value === undefined || value === null)) {
-      errors.push(`Missing required field "${field}" for message type "${type}"`);
-      continue;
-    }
-
-    if (value !== undefined && value !== null) {
-      const actualType = typeof value;
-      if (actualType !== spec.type) {
-        errors.push(
-          `Field "${field}" expected ${spec.type}, got ${actualType} for message type "${type}"`
-        );
-      }
-    }
-  }
-
-  // Domain-specific constraints
-  if (type === "set_profile" && typeof msg.profile === "string") {
-    if (!ALLOWED_PROFILES.has(msg.profile)) {
-      errors.push(`Invalid profile "${msg.profile}". Allowed: ${[...ALLOWED_PROFILES].join(", ")}`);
-    }
-  }
-
-  if (type === "connect_mcp" && typeof msg.transport === "string") {
-    if (!ALLOWED_TRANSPORTS.has(msg.transport)) {
-      errors.push(`Invalid transport "${msg.transport}". Allowed: ${[...ALLOWED_TRANSPORTS].join(", ")}`);
-    }
-  }
-
-  if (errors.length > 0) {
-    Logger.warn(`Webview message validation failed for "${type}": ${errors.join("; ")}`);
-    return { valid: false, errors, message: null };
-  }
-
-  return { valid: true, errors: [], message: msg as unknown as WebviewMessage };
+  return `${path}: ${issue.message}`;
 }
 
 /**
  * Extend allowed profiles at runtime (for dynamically registered profiles).
+ * Backward-compatible: same signature as the old MessageValidator export.
  */
 export function registerAllowedProfile(profile: string): void {
-  ALLOWED_PROFILES.add(profile);
+  registerProfileType(profile);
 }

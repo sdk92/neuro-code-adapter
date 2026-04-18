@@ -1,44 +1,31 @@
 /**
  * AssignmentParser — PDF-only assignment parser.
  *
- * Supports two tiers:
+ * REFACTORED (M1): PDF structuring prompts moved to resources/prompts/pdf-structuring/.
+ * The prompt text is no longer co-located with the parsing logic — editing it
+ * no longer requires recompiling the extension.
  *
- *   Tier 1 (best): PDF → send directly to Claude as base64 document
- *     Claude "sees" the original PDF layout — formulas, tables, diagrams preserved.
- *     Requires API key. Solves garbled symbols/formulas from text extraction.
- *
- *   Tier 2 (offline fallback): PDF → pdf-parse text extraction → heuristic parsing
- *     No API key needed. Basic structure detection only.
+ * Tier 1 (best): PDF → base64 → provider.complete() with document input
+ * Tier 2 (offline fallback): pdf-parse text extraction → heuristic parsing
  */
 import * as path from "path";
 import type { LlmProvider } from "@services/llm/LlmProvider";
 import type { Assignment, AssignmentSection, AssignmentMetadata } from "@shared/types";
+import { AssignmentSchema } from "@shared/schemas";
+import type { PromptBuilder } from "@services/prompts";
 import { Logger } from "@shared/logger";
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-
-/** Max file size for PDF parsing (borrowed from Cline's 20MB limit) */
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
-
-/** Simple cache to avoid re-parsing the same file */
 const extractionCache = new Map<string, { text: string; timestamp: number }>();
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
-// ─── PDF Text Extraction (Tier 2 offline fallback) ──────────────────────────
+// ─── PDF text extraction (Tier 2) ────────────────────────────────────────────
 
-/**
- * Extract text from a PDF buffer using pdf-parse.
- * Used only when no API key is available (Tier 2 fallback).
- *
- * Import from "pdf-parse/lib/pdf-parse" (NOT the main entry).
- * The main entry tries to load a test PDF during require(), which fails
- * in bundled environments (esbuild/webpack).
- */
 async function extractPdfText(buffer: Buffer, cacheKey?: string): Promise<string> {
   if (buffer.length > MAX_FILE_SIZE_BYTES) {
     throw new Error(
       `PDF file too large (${Math.round(buffer.length / 1024 / 1024)}MB). ` +
-      `Maximum supported size is ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB.`
+      `Maximum supported size is ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB.`,
     );
   }
 
@@ -54,17 +41,15 @@ async function extractPdfText(buffer: Buffer, cacheKey?: string): Promise<string
     const pdf = require("pdf-parse/lib/pdf-parse");
     const data = await pdf(buffer);
     const text: string = data.text;
-
     if (cacheKey) {
       extractionCache.set(cacheKey, { text, timestamp: Date.now() });
     }
-
     return text;
   } catch (error) {
     Logger.error("PDF parsing failed:", error);
     throw new Error(
       `Failed to parse PDF. Ensure pdf-parse is installed (npm install pdf-parse). ` +
-      `Error: ${error instanceof Error ? error.message : String(error)}`
+      `Error: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }
@@ -73,91 +58,13 @@ export function clearExtractionCache(): void {
   extractionCache.clear();
 }
 
-// ─── PDF Direct Vision — Tier 1 ─────────────────────────────────────────────
+// ─── Tier 1: direct PDF input via LLM (now template-driven) ─────────────────
 
-/**
- * Prompt for Tier 1 (direct PDF input).
- *
- * Task sections MUST use a standardised three-part layout so every assignment
- * the student sees has a predictable, homogeneous structure:
- *
- *   ### Background
- *   ### What to do
- *   ### Acceptance criteria
- *
- * This lets the adaptive renderer and the student reliably locate each part
- * regardless of how the original PDF was formatted.
- */
-const PDF_STRUCTURING_PROMPT = `You are a document parser for an educational platform.
-You will receive a PDF file of a programming assignment. Analyze the ENTIRE document and extract its structure into JSON.
-
-CRITICAL: Your response must be ONLY valid JSON — no markdown fences, no explanation, no preamble.
-Do NOT output any text before or after the JSON object.
-
-The JSON must match this schema exactly:
-{
-  "metadata": {
-    "id": "string (generate from title, e.g. 'csharp-calculator-101')",
-    "title": "string",
-    "description": "string (1-2 sentence summary)",
-    "author": "string (or 'Unknown')",
-    "createdAt": "ISO date string",
-    "updatedAt": "ISO date string",
-    "difficulty": "beginner | intermediate | advanced",
-    "estimatedMinutes": number,
-    "language": "string (programming language, e.g. 'C#', 'Python')",
-    "tags": ["string"]
-  },
-  "sections": [
-    {
-      "id": "string (e.g. 'section_0')",
-      "title": "string",
-      "content": "string (Markdown formatted — see layout rules below)",
-      "type": "instruction | task | hint | example | reference",
-      "order": number
-    }
-  ],
-  "starterCode": "string or null (if starter code is provided in the document)",
-  "testCases": []
-}
-
-Layout rules:
-- For sections of type "task", the content field MUST use exactly this three-part Markdown structure:
-
-  ### Background
-  [Why this task exists and what concept it reinforces — 1-3 sentences]
-
-  ### What to do
-  [Numbered list of concrete, actionable steps]
-
-  ### Acceptance criteria
-  [Bullet list describing how the student knows the task is complete]
-
-- For all other section types (instruction, hint, example, reference), write content as free Markdown.
-- Detect section boundaries from headings, numbered items, or topic changes.
-- Preserve mathematical formulas in LaTeX notation (e.g. $x^2$, $$\\sum_{i=1}^{n}$$).
-- Preserve code blocks in Markdown format (triple backticks with language identifier).
-- Convert tables to Markdown table syntax.
-- Describe diagrams/figures as [Figure: description].
-- Detect the programming language from context.
-- If difficulty is not stated, infer from content complexity.
-- Estimate completion time based on number and complexity of tasks.
-
-Remember: Output ONLY the JSON object. No other text.`;
-
-/**
- * Send PDF directly to LLM as a base64 document (Tier 1).
- *
- * If the provider supports document input (e.g. Anthropic), the PDF is sent
- * as-is — Claude sees the PDF exactly as a student would.
- * If not (e.g. OpenAI), falls back to Tier 2 (text extraction + heuristics).
- *
- * REFACTORED: Uses LlmProvider instead of direct Anthropic SDK.
- */
 async function structureViaDirectPdf(
   pdfBuffer: Buffer,
   provider: LlmProvider,
-  fileName: string
+  fileName: string,
+  promptBuilder: PromptBuilder,
 ): Promise<Assignment> {
   if (!provider.supportsDocumentInput) {
     throw new Error("Provider does not support document input — falling back to Tier 2");
@@ -165,35 +72,36 @@ async function structureViaDirectPdf(
 
   const base64Data = pdfBuffer.toString("base64");
 
-  Logger.log(`Tier 1: Sending PDF to ${provider.name} (${provider.model}): ${fileName} (${Math.round(pdfBuffer.length / 1024)}KB)`);
+  Logger.log(
+    `Tier 1: Sending PDF to ${provider.name} (${provider.model}): ` +
+    `${fileName} (${Math.round(pdfBuffer.length / 1024)}KB)`,
+  );
+
+  // REFACTORED: prompts pulled from resources/prompts/ — no hardcoded strings here.
+  const systemPrompt = promptBuilder
+    .from("pdf-structuring.system")
+    .buildText();
+
+  const userPrompt = promptBuilder
+    .from("pdf-structuring.user", { fileName })
+    .buildText();
 
   const response = await provider.complete({
-    system: PDF_STRUCTURING_PROMPT,
+    system: systemPrompt,
     messages: [
       {
         role: "user",
         content: [
-          {
-            type: "document",
-            mediaType: "application/pdf",
-            data: base64Data,
-          },
-          {
-            type: "text",
-            text: `Parse this programming assignment PDF ("${fileName}") into the structured JSON format specified in your instructions.`,
-          },
+          { type: "document", mediaType: "application/pdf", data: base64Data },
+          { type: "text", text: userPrompt },
         ],
       },
-      // Prefill to force JSON output immediately
-      {
-        role: "assistant",
-        content: "{",
-      },
+      // Prefill "{" to force JSON output immediately
+      { role: "assistant", content: "{" },
     ],
     maxTokens: 8192,
   });
 
-  // The response continues from the prefilled "{", so prepend it back
   let jsonStr = "{" + response.text.trim();
   const jsonMatch = jsonStr.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/);
   if (jsonMatch) {
@@ -204,13 +112,8 @@ async function structureViaDirectPdf(
   return validateAndNormalise(parsed, fileName);
 }
 
-// ─── Heuristic Parsing — Tier 2 offline fallback ────────────────────────────
+// ─── Tier 2: heuristic parsing (unchanged) ──────────────────────────────────
 
-/**
- * Parse raw text into sections using heuristic rules.
- * Used only when no API key is available.
- */
-// REFACTORED: Exported for independent testing (previously private).
 export function structureViaHeuristics(rawText: string, fileName: string): Assignment {
   const lines = rawText.split("\n");
   const sections: AssignmentSection[] = [];
@@ -229,10 +132,7 @@ export function structureViaHeuristics(rawText: string, fileName: string): Assig
   };
   let detectedLanguage = "Unknown";
   for (const [lang, regex] of Object.entries(languageHints)) {
-    if (regex.test(rawText)) {
-      detectedLanguage = lang;
-      break;
-    }
+    if (regex.test(rawText)) { detectedLanguage = lang; break; }
   }
 
   function flushSection() {
@@ -300,9 +200,7 @@ export function structureViaHeuristics(rawText: string, fileName: string): Assig
 
   let starterCode: string | undefined;
   const codeMatch = rawText.match(/```[\w]*\n([\s\S]*?)```/);
-  if (codeMatch) {
-    starterCode = codeMatch[1].trim();
-  }
+  if (codeMatch) { starterCode = codeMatch[1].trim(); }
 
   return {
     metadata,
@@ -328,20 +226,11 @@ export function classifySectionTitle(title: string): AssignmentSection["type"] {
 
 export function classifyLabel(label: string): AssignmentSection["type"] {
   switch (label.toLowerCase()) {
-    case "task":
-    case "exercise":
-    case "step":
-    case "part":
-      return "task";
-    case "hint":
-    case "note":
-      return "hint";
-    case "example":
-      return "example";
-    case "reference":
-      return "reference";
-    default:
-      return "instruction";
+    case "task": case "exercise": case "step": case "part": return "task";
+    case "hint": case "note": return "hint";
+    case "example": return "example";
+    case "reference": return "reference";
+    default: return "instruction";
   }
 }
 
@@ -351,90 +240,78 @@ export function inferDifficulty(text: string): AssignmentMetadata["difficulty"] 
     /\b(design pattern|architecture|dependency injection|unit test|mock|refactor)\b/gi,
     /\b(algorithm|complexity|O\(n\)|recursion|data structure|tree|graph|hash)\b/gi,
   ];
-
   let score = 0;
   for (const regex of complexitySignals) {
     const matches = text.match(regex);
     if (matches) { score += matches.length; }
   }
-
   if (score >= 8) { return "advanced"; }
   if (score >= 3) { return "intermediate"; }
   return "beginner";
 }
 
-// ─── Validation ──────────────────────────────────────────────────────────────
+// ─── Validation (M2: Zod-backed) ─────────────────────────────────────────────
 
-export function validateAndNormalise(raw: any, fileName: string): Assignment {
-  if (!raw || typeof raw !== "object") {
-    throw new Error("Parsed result is not an object");
+/**
+ * Validate and normalise a parsed assignment.
+ *
+ * REFACTORED (M2): Hand-rolled String(x ?? fallback) chains and
+ * ["..."].includes(x) enum checks replaced with AssignmentSchema.safeParse.
+ * Filename-derived title fallback is injected before parsing so missing-title
+ * cases produce a sensible default (schema's generic default would use
+ * "Untitled Assignment" otherwise).
+ */
+export function validateAndNormalise(raw: unknown, fileName: string): Assignment {
+  // Inject filename-derived title fallback BEFORE Zod parses, so the
+  // schema's generic default doesn't clobber it.
+  const withFilenameDefault =
+    raw && typeof raw === "object"
+      ? {
+          ...(raw as Record<string, unknown>),
+          metadata: {
+            ...(raw as any).metadata,
+            title:
+              (raw as any).metadata?.title ??
+              path.basename(fileName, path.extname(fileName)),
+          },
+        }
+      : raw;
+
+  const result = AssignmentSchema.safeParse(withFilenameDefault);
+  if (!result.success) {
+    throw new Error(
+      `Assignment validation failed: ${result.error.issues
+        .map((i) => `${i.path.join(".") || "<root>"}: ${i.message}`)
+        .join("; ")}`,
+    );
   }
-
-  const metadata: AssignmentMetadata = {
-    id: String(raw.metadata?.id ?? `assignment_${Date.now()}`),
-    title: String(raw.metadata?.title ?? path.basename(fileName, path.extname(fileName))),
-    description: String(raw.metadata?.description ?? ""),
-    author: String(raw.metadata?.author ?? "Unknown"),
-    createdAt: String(raw.metadata?.createdAt ?? new Date().toISOString()),
-    updatedAt: String(raw.metadata?.updatedAt ?? new Date().toISOString()),
-    difficulty: ["beginner", "intermediate", "advanced"].includes(raw.metadata?.difficulty)
-      ? raw.metadata.difficulty
-      : "intermediate",
-    estimatedMinutes: typeof raw.metadata?.estimatedMinutes === "number" ? raw.metadata.estimatedMinutes : 60,
-    language: String(raw.metadata?.language ?? "Unknown"),
-    tags: Array.isArray(raw.metadata?.tags) ? raw.metadata.tags.map(String) : [],
-  };
-
-  const sections: AssignmentSection[] = Array.isArray(raw.sections)
-    ? raw.sections.map((s: any, i: number) => ({
-        id: String(s.id ?? `section_${i}`),
-        title: String(s.title ?? `Section ${i + 1}`),
-        content: String(s.content ?? ""),
-        type: ["instruction", "task", "hint", "example", "reference"].includes(s.type) ? s.type : "instruction",
-        order: typeof s.order === "number" ? s.order : i,
-      }))
-    : [];
-
-  if (sections.length === 0) {
-    throw new Error("Assignment must contain at least one section");
-  }
-
-  return {
-    metadata,
-    sections,
-    starterCode: typeof raw.starterCode === "string" ? raw.starterCode : undefined,
-    testCases: Array.isArray(raw.testCases) ? raw.testCases : undefined,
-    adaptationHints: typeof raw.adaptationHints === "object" ? raw.adaptationHints : undefined,
-  };
+  return result.data;
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 /**
- * Parse a PDF assignment file into a structured Assignment object.
+ * Parse a PDF assignment file into a structured Assignment.
  *
- * @param fileBuffer - Raw PDF content as Buffer
- * @param fileName - Original file name (used for metadata)
- * @param provider - Optional LlmProvider for Tier 1 (direct PDF to LLM)
- *
- * REFACTORED: Accepts LlmProvider instead of raw API key.
- * Provider-agnostic: works with Anthropic (native PDF), OpenAI (text fallback), etc.
+ * REFACTORED: `promptBuilder` is now required for the Tier 1 path (was previously
+ * hardcoded strings). Tier 2 fallback still works without it.
  */
 export async function parseAssignmentFile(
   fileBuffer: Buffer,
   fileName: string,
-  provider?: LlmProvider
+  provider?: LlmProvider,
+  promptBuilder?: PromptBuilder,
 ): Promise<Assignment> {
-  // Tier 1: Direct PDF to LLM (best quality, requires provider with document support)
-  if (provider) {
+  if (provider && promptBuilder) {
     try {
-      return await structureViaDirectPdf(fileBuffer, provider, fileName);
+      return await structureViaDirectPdf(fileBuffer, provider, fileName, promptBuilder);
     } catch (error) {
       Logger.warn("Tier 1 (direct PDF) failed, falling back to heuristics:", error);
     }
+  } else if (provider && !promptBuilder) {
+    Logger.warn("Provider available but PromptBuilder not wired — skipping Tier 1");
   }
 
-  // Tier 2: Text extraction → heuristic parsing (offline fallback)
   Logger.log("Tier 2: Extracting text and parsing via heuristics...");
   const rawText = await extractPdfText(fileBuffer, fileName);
 
@@ -442,7 +319,7 @@ export async function parseAssignmentFile(
     throw new Error(
       "PDF appears to be empty or image-only. " +
       "Configure an Anthropic API key (neurocode.anthropicApiKey) " +
-      "for direct PDF reading with formula/symbol support."
+      "for direct PDF reading with formula/symbol support.",
     );
   }
 

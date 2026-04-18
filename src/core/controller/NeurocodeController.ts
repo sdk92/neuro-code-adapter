@@ -41,6 +41,7 @@ import type { AdaptationRequest, AdaptationResponse, Assignment } from "@shared/
 import { Logger } from "@shared/logger";
 import { ConfigService } from "@shared/ConfigService";
 import { validateWebviewMessage } from "@shared/MessageValidator";
+import type { PromptBuilder } from "@services/prompts";
 
 // ─── AdaptationState (inspired by Cline's TaskState, line 166) ───────────────
 // Cline's Task class uses a separate TaskState object to hold mutable state.
@@ -86,7 +87,8 @@ export class NeurocodeController implements vscode.Disposable {
   constructor(
     context: vscode.ExtensionContext,
     webview: WebviewManager,
-    configService: ConfigService
+    configService: ConfigService,
+    promptBuilder: PromptBuilder,
   ) {
     // Initialize subsystems
     this.mcpManager = new McpManager();
@@ -97,6 +99,10 @@ export class NeurocodeController implements vscode.Disposable {
     this.scaffoldEngine = new ScaffoldEngine();
     this.webview = webview;
     this.configService = configService;
+
+    // M1: wire the PromptBuilder into subsystems that need it.
+    this.adaptationEngine.setPromptBuilder(promptBuilder);
+    this.assignmentManager.setPromptBuilder(promptBuilder);
 
     // Wire up connections
     this.setupMcpCallbacks();
