@@ -261,16 +261,6 @@ export class NeurocodeController implements vscode.Disposable {
         this.preferenceManager.setProfile(message.profile);
         break;
 
-      // Triggered by: section scroll (IntersectionObserver) and checkbox in AdaptiveRenderer
-      // Currently no-op — placeholder for future progress tracking
-      case "section_viewed":
-        break;
-
-      // No corresponding frontend button — needs an Export button in the UI
-      case "export_progress":
-        await this.exportProgress();
-        break;
-
       // No corresponding frontend button — needs a Connect MCP input/button in the UI
       case "connect_mcp":
         await this.connectMcp(message.url);
@@ -455,25 +445,6 @@ export class NeurocodeController implements vscode.Disposable {
   }
 
   /**
-   * Export progress report.
-   */
-  private async exportProgress(): Promise<void> {
-    try {
-      const report = await this.assignmentManager.exportProgress();
-      const uri = await vscode.window.showSaveDialog({
-        defaultUri: vscode.Uri.file("progress-report.json"),
-        filters: { "JSON Files": ["json"] },
-      });
-      if (uri) {
-        await vscode.workspace.fs.writeFile(uri, Buffer.from(report, "utf-8"));
-        this.webview.sendInfo("Progress exported successfully");
-      }
-    } catch (error) {
-      this.webview.sendError("export_failed", `Export failed: ${error}`);
-    }
-  }
-
-  /**
    * Scaffold a starter project for the current assignment.
    * Resolves the workspace root, then runs the ScaffoldEngine agentic loop.
    */
@@ -567,15 +538,6 @@ export class NeurocodeController implements vscode.Disposable {
   }
 
   // ─── Public API for Commands ────────────────────────────────────
-
-  /**
-   * Public entry point for export progress command.
-   * REFACTORED: extension.ts command handler now delegates here,
-   * eliminating the duplicated save-dialog + writeFile logic.
-   */
-  async handleExportProgress(): Promise<void> {
-    await this.exportProgress();
-  }
 
   /**
    * Show the preferences configuration panel.

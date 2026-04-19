@@ -37,10 +37,7 @@
         "command": "neurocode.showDashboard",
         "title": "NeuroCode: Show Dashboard"
       },
-      {
-        "command": "neurocode.exportProgress",
-        "title": "NeuroCode: Export Progress"
-      }
+
     ],
     "viewsContainers": {
       "activitybar": [

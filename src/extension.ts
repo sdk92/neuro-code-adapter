@@ -101,7 +101,6 @@ function registerCommands(
     ["neurocode.getAIHelp", () => ctrl.requestAdaptation("help_request")],
     ["neurocode.scaffoldProject", () => ctrl.requestScaffold()],
     ["neurocode.showDashboard", () => ctrl.showDashboard()],
-    ["neurocode.exportProgress", () => ctrl.handleExportProgress()],
   ];
 
   for (const [id, handler] of commands) {

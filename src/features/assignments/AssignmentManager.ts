@@ -12,33 +12,12 @@ import type { PromptBuilder } from "@services/prompts";
 import { Logger } from "@shared/logger";
 import { parseAssignmentFile } from "./parser";
 
-interface ProgressRecord {
-  assignmentId: string;
-  startedAt: number;
-  lastAccessedAt: number;
-  completedSections: string[];
-  totalTimeMs: number;
-  codeSnapshots: Array<{ timestamp: number; filePath: string; content: string }>;
-}
-
 export class AssignmentManager implements vscode.Disposable {
-  private context: vscode.ExtensionContext;
   private currentAssignment: Assignment | null = null;
-  private progress: Map<string, ProgressRecord> = new Map();
   private provider: LlmProvider | null = null;
   private promptBuilder: PromptBuilder | null = null;
 
-  private static readonly PROGRESS_KEY = "neurocode.assignmentProgress";
-
-  constructor(context: vscode.ExtensionContext) {
-    this.context = context;
-    const saved = context.globalState.get<Record<string, ProgressRecord>>(AssignmentManager.PROGRESS_KEY);
-    if (saved) {
-      for (const [id, record] of Object.entries(saved)) {
-        this.progress.set(id, record);
-      }
-    }
-  }
+  constructor(_context: vscode.ExtensionContext) {}
 
   setProvider(provider: LlmProvider | null): void {
     this.provider = provider;
@@ -64,7 +43,6 @@ export class AssignmentManager implements vscode.Disposable {
         this.promptBuilder ?? undefined,
       );
       this.currentAssignment = assignment;
-      this.initializeProgress(assignment.metadata.id);
       Logger.log(`Assignment loaded: ${assignment.metadata.title} (${assignment.sections.length} sections)`);
       return assignment;
     } catch (error) {
@@ -101,57 +79,7 @@ export class AssignmentManager implements vscode.Disposable {
     return this.importFromFile(filePath);
   }
 
-  markSectionComplete(sectionId: string): void {
-    if (!this.currentAssignment) { return; }
-    const record = this.progress.get(this.currentAssignment.metadata.id);
-    if (record && !record.completedSections.includes(sectionId)) {
-      record.completedSections.push(sectionId);
-      this.saveProgress();
-    }
-  }
-
   getCurrentAssignment(): Assignment | null { return this.currentAssignment; }
 
-  getProgress(): ProgressRecord | null {
-    if (!this.currentAssignment) { return null; }
-    return this.progress.get(this.currentAssignment.metadata.id) ?? null;
-  }
-
-  async exportProgress(): Promise<string> {
-    if (!this.currentAssignment) { throw new Error("No assignment loaded"); }
-    const record = this.progress.get(this.currentAssignment.metadata.id);
-    const report = {
-      assignment: this.currentAssignment.metadata,
-      progress: record,
-      completionRate: record
-        ? record.completedSections.length / this.currentAssignment.sections.length
-        : 0,
-      exportedAt: new Date().toISOString(),
-    };
-    return JSON.stringify(report, null, 2);
-  }
-
-  private initializeProgress(assignmentId: string): void {
-    if (!this.progress.has(assignmentId)) {
-      this.progress.set(assignmentId, {
-        assignmentId,
-        startedAt: Date.now(),
-        lastAccessedAt: Date.now(),
-        completedSections: [],
-        totalTimeMs: 0,
-        codeSnapshots: [],
-      });
-    } else {
-      this.progress.get(assignmentId)!.lastAccessedAt = Date.now();
-    }
-    this.saveProgress();
-  }
-
-  private saveProgress(): void {
-    const obj: Record<string, ProgressRecord> = {};
-    for (const [id, record] of this.progress) { obj[id] = record; }
-    this.context.globalState.update(AssignmentManager.PROGRESS_KEY, obj);
-  }
-
-  dispose(): void { this.saveProgress(); }
+  dispose(): void {}
 }

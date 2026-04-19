@@ -32,7 +32,6 @@ const ReadyMessage = z.object({ type: z.literal("ready") });
 const RequestStateMessage = z.object({ type: z.literal("request_state") });
 const OpenAssignmentMessage = z.object({ type: z.literal("open_assignment") });
 const OpenPreferencesMessage = z.object({ type: z.literal("open_preferences") });
-const ExportProgressMessage = z.object({ type: z.literal("export_progress") });
 const DisconnectMcpMessage = z.object({ type: z.literal("disconnect_mcp") });
 const RequestScaffoldMessage = z.object({ type: z.literal("request_scaffold") });
 
@@ -45,11 +44,6 @@ const RequestHelpMessage = z.object({
 const SetProfileMessage = z.object({
   type: z.literal("set_profile"),
   profile: NeurodiversityTypeSchema,
-});
-
-const SectionViewedMessage = z.object({
-  type: z.literal("section_viewed"),
-  sectionId: z.string(),
 });
 
 const ConnectMcpMessage = z.object({
@@ -86,12 +80,10 @@ export const WebviewMessageSchema = z.discriminatedUnion("type", [
   RequestStateMessage,
   OpenAssignmentMessage,
   OpenPreferencesMessage,
-  ExportProgressMessage,
   DisconnectMcpMessage,
   RequestScaffoldMessage,
   RequestHelpMessage,
   SetProfileMessage,
-  SectionViewedMessage,
   ConnectMcpMessage,
   ApplyPreferencesMessage,
   ScaffoldApprovalResponseMessage,
