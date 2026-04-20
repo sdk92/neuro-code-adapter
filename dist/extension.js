@@ -13706,7 +13706,7 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode9 = __toESM(require("vscode"));
+var vscode8 = __toESM(require("vscode"));
 var path6 = __toESM(require("path"));
 
 // src/shared/logger.ts
@@ -13901,7 +13901,7 @@ var WebviewManager = class {
 };
 
 // src/core/controller/NeurocodeController.ts
-var vscode7 = __toESM(require("vscode"));
+var vscode6 = __toESM(require("vscode"));
 
 // node_modules/zod/v3/helpers/util.js
 var util;
@@ -41240,104 +41240,15 @@ function tryCreateProvider(config2) {
 }
 
 // src/features/preferences/PreferenceManager.ts
-var vscode = __toESM(require("vscode"));
 var PreferenceManager = class _PreferenceManager {
   context;
   currentPreferences;
   changeCallbacks = [];
-  disposables = [];
   static STORAGE_KEY = "neurocode.userPreferences";
   constructor(context) {
     this.context = context;
-    const saved = context.globalState.get(_PreferenceManager.STORAGE_KEY);
-    if (saved) {
-      this.currentPreferences = saved;
-    } else {
-      const config2 = vscode.workspace.getConfiguration("neurocode");
-      const profileType = config2.get("neurodiversityProfile", "neurotypical");
-      this.currentPreferences = getDefaultPreferences(profileType);
-      this.syncFromVscodeSettings(config2);
-    }
-    this.disposables.push(
-      vscode.workspace.onDidChangeConfiguration((e2) => {
-        if (e2.affectsConfiguration("neurocode")) {
-          const config2 = vscode.workspace.getConfiguration("neurocode");
-          this.syncFromVscodeSettings(config2);
-        }
-      })
-    );
+    this.currentPreferences = context.globalState.get(_PreferenceManager.STORAGE_KEY) ?? getDefaultPreferences("neurotypical");
     Logger.log(`PreferenceManager initialized: profile=${this.currentPreferences.neurodiversityType}`);
-  }
-  /**
-   * Sync individual VS Code settings into the preference object.
-   */
-  syncFromVscodeSettings(config2) {
-    const profileType = config2.get("neurodiversityProfile");
-    if (profileType && profileType !== this.currentPreferences.neurodiversityType) {
-      this.setProfile(profileType);
-      return;
-    }
-    let changed = false;
-    const sync = (key, current, setter) => {
-      const value = config2.get(key);
-      if (value !== void 0 && value !== current) {
-        setter(value);
-        changed = true;
-      }
-    };
-    sync(
-      "fontSize",
-      this.currentPreferences.visual.fontSize,
-      (v2) => {
-        this.currentPreferences.visual.fontSize = v2;
-      }
-    );
-    sync(
-      "fontFamily",
-      this.currentPreferences.visual.fontFamily,
-      (v2) => {
-        this.currentPreferences.visual.fontFamily = v2;
-      }
-    );
-    sync(
-      "lineSpacing",
-      this.currentPreferences.visual.lineSpacing,
-      (v2) => {
-        this.currentPreferences.visual.lineSpacing = v2;
-      }
-    );
-    sync(
-      "colorScheme",
-      this.currentPreferences.visual.colorScheme,
-      (v2) => {
-        this.currentPreferences.visual.colorScheme = v2;
-      }
-    );
-    sync(
-      "focusMode",
-      this.currentPreferences.cognitive.focusMode,
-      (v2) => {
-        this.currentPreferences.cognitive.focusMode = v2;
-      }
-    );
-    sync(
-      "textToSpeech",
-      this.currentPreferences.cognitive.textToSpeech,
-      (v2) => {
-        this.currentPreferences.cognitive.textToSpeech = v2;
-      }
-    );
-    sync(
-      "taskGranularity",
-      this.currentPreferences.structural.taskGranularity,
-      (v2) => {
-        this.currentPreferences.structural.taskGranularity = v2;
-      }
-    );
-    if (changed) {
-      this.save();
-      this.notifyChange();
-    }
   }
   /**
    * Switch to a new neurodiversity profile.
@@ -41522,13 +41433,12 @@ var PreferenceManager = class _PreferenceManager {
     `;
   }
   dispose() {
-    this.disposables.forEach((d2) => d2.dispose());
     this.changeCallbacks = [];
   }
 };
 
 // src/features/assignments/AssignmentManager.ts
-var vscode2 = __toESM(require("vscode"));
+var vscode = __toESM(require("vscode"));
 var path2 = __toESM(require("path"));
 
 // src/features/assignments/parser.ts
@@ -41795,8 +41705,8 @@ var AssignmentManager = class {
   }
   async importFromFile(filePath) {
     try {
-      const uri = vscode2.Uri.file(filePath);
-      const content = await vscode2.workspace.fs.readFile(uri);
+      const uri = vscode.Uri.file(filePath);
+      const content = await vscode.workspace.fs.readFile(uri);
       const buffer = Buffer.from(content);
       Logger.log(`Importing PDF assignment: ${path2.basename(filePath)}`);
       const assignment = await parseAssignmentFile(
@@ -41814,7 +41724,7 @@ var AssignmentManager = class {
     }
   }
   async promptImport() {
-    const uris = await vscode2.window.showOpenDialog({
+    const uris = await vscode.window.showOpenDialog({
       canSelectFiles: true,
       canSelectMany: false,
       filters: { "PDF Assignments": ["pdf"] },
@@ -41825,14 +41735,14 @@ var AssignmentManager = class {
     }
     const filePath = uris[0].fsPath;
     if (!this.provider) {
-      const proceed = await vscode2.window.showWarningMessage(
+      const proceed = await vscode.window.showWarningMessage(
         "PDF parsing works best with an LLM provider configured. Without it, basic heuristic parsing will be used (less accurate). Continue?",
         "Continue",
         "Configure Provider",
         "Cancel"
       );
       if (proceed === "Configure Provider") {
-        await vscode2.commands.executeCommand("workbench.action.openSettings", "neurocode.llmProvider");
+        await vscode.commands.executeCommand("workbench.action.openSettings", "neurocode.llmProvider");
         return null;
       }
       if (proceed !== "Continue") {
@@ -44473,7 +44383,7 @@ var AdaptiveRenderer = class {
 };
 
 // src/features/scaffold/ScaffoldEngine.ts
-var vscode6 = __toESM(require("vscode"));
+var vscode5 = __toESM(require("vscode"));
 
 // src/features/scaffold/ScaffoldToolRegistry.ts
 var tools = /* @__PURE__ */ new Map();
@@ -44604,7 +44514,7 @@ ${hints.map((h2) => `- ${h2}`).join("\n")}` : ""
 }
 
 // src/features/scaffold/CommandExecutor.ts
-var vscode3 = __toESM(require("vscode"));
+var vscode2 = __toESM(require("vscode"));
 var CommandExecutor = class {
   terminal;
   /**
@@ -44635,7 +44545,7 @@ var CommandExecutor = class {
         Logger.warn(`[CommandExecutor] Command timed out (120s): ${command}`);
         resolve3(1);
       }, 12e4);
-      const disposable = vscode3.window.onDidEndTerminalShellExecution((e2) => {
+      const disposable = vscode2.window.onDidEndTerminalShellExecution((e2) => {
         if (e2.execution === execution) {
           clearTimeout(timer);
           disposable.dispose();
@@ -44658,16 +44568,16 @@ var CommandExecutor = class {
       }
       return this.terminal;
     }
-    this.terminal = vscode3.window.createTerminal({
+    this.terminal = vscode2.window.createTerminal({
       name: "NeuroCode Scaffold",
       cwd,
-      iconPath: new vscode3.ThemeIcon("rocket")
+      iconPath: new vscode2.ThemeIcon("rocket")
     });
     this.terminal.show(true);
     return this.terminal;
   }
   isTerminalClosed(terminal) {
-    return !vscode3.window.terminals.includes(terminal);
+    return !vscode2.window.terminals.includes(terminal);
   }
   dispose() {
     this.terminal?.dispose();
@@ -44750,7 +44660,7 @@ function disposeExecutor() {
 }
 
 // src/features/scaffold/tools/CreateFileTool.ts
-var vscode4 = __toESM(require("vscode"));
+var vscode3 = __toESM(require("vscode"));
 var path3 = __toESM(require("path"));
 var CreateFileTool = {
   name: "create_file",
@@ -44790,8 +44700,8 @@ var CreateFileTool = {
       return { toolUseId: context.toolUseId, success: false, output: "", error: "User rejected file creation." };
     }
     try {
-      const uri = vscode4.Uri.file(absolutePath);
-      await vscode4.workspace.fs.writeFile(uri, Buffer.from(content, "utf-8"));
+      const uri = vscode3.Uri.file(absolutePath);
+      await vscode3.workspace.fs.writeFile(uri, Buffer.from(content, "utf-8"));
       context.onProgress(`Created: ${relativePath}`, false);
       return { toolUseId: context.toolUseId, success: true, output: `File created: ${relativePath}` };
     } catch (err) {
@@ -44806,7 +44716,7 @@ var CreateFileTool = {
 };
 
 // src/features/scaffold/tools/OpenInEditorTool.ts
-var vscode5 = __toESM(require("vscode"));
+var vscode4 = __toESM(require("vscode"));
 var path4 = __toESM(require("path"));
 var OpenInEditorTool = {
   name: "open_in_editor",
@@ -44830,8 +44740,8 @@ var OpenInEditorTool = {
     const { path: relativePath } = input;
     const absolutePath = path4.resolve(context.workspaceRoot, relativePath);
     try {
-      const doc = await vscode5.workspace.openTextDocument(vscode5.Uri.file(absolutePath));
-      await vscode5.window.showTextDocument(doc, vscode5.ViewColumn.One);
+      const doc = await vscode4.workspace.openTextDocument(vscode4.Uri.file(absolutePath));
+      await vscode4.window.showTextDocument(doc, vscode4.ViewColumn.One);
       context.onProgress(`Opened: ${relativePath}`, false);
       return { toolUseId: context.toolUseId, success: true, output: `Opened ${relativePath} in editor.` };
     } catch (err) {
@@ -44975,7 +44885,7 @@ var ScaffoldEngine = class {
   }
   // ─── Helpers ────────────────────────────────────────────────────────────────
   async requestApproval(title, detail) {
-    const answer = await vscode6.window.showInformationMessage(
+    const answer = await vscode5.window.showInformationMessage(
       `NeuroCode Scaffold: ${title}`,
       { modal: true, detail },
       "Allow",
@@ -45217,9 +45127,9 @@ var NeurocodeController = class {
   async promptAndLoadAssignment() {
     let assignment;
     try {
-      assignment = await vscode7.window.withProgress(
+      assignment = await vscode6.window.withProgress(
         {
-          location: vscode7.ProgressLocation.Notification,
+          location: vscode6.ProgressLocation.Notification,
           title: "NeuroCode: Loading assignment...",
           cancellable: false
         },
@@ -45235,7 +45145,7 @@ var NeurocodeController = class {
     } catch (error48) {
       const msg = error48 instanceof Error ? error48.message : String(error48);
       Logger.error("Failed to load assignment:", error48);
-      vscode7.window.showErrorMessage(`NeuroCode: Failed to load assignment \u2014 ${msg}`);
+      vscode6.window.showErrorMessage(`NeuroCode: Failed to load assignment \u2014 ${msg}`);
       this.webview.sendError("load_failed", msg);
       return;
     }
@@ -45246,7 +45156,7 @@ var NeurocodeController = class {
     this.webview.postMessage({ type: "assignment_loaded", assignment });
     await this.renderAdaptiveView(assignment);
     this.postStateToWebview();
-    vscode7.window.showInformationMessage(
+    vscode6.window.showInformationMessage(
       `NeuroCode: Loaded "${assignment.metadata.title}" (${assignment.sections.length} sections)`
     );
   }
@@ -45348,24 +45258,24 @@ var NeurocodeController = class {
   async requestScaffold() {
     const assignment = this.assignmentManager.getCurrentAssignment();
     if (!assignment) {
-      vscode7.window.showErrorMessage("NeuroCode: Load an assignment before scaffolding.");
+      vscode6.window.showErrorMessage("NeuroCode: Load an assignment before scaffolding.");
       return;
     }
     if (!this.scaffoldEngine.isAvailable) {
-      vscode7.window.showErrorMessage(
+      vscode6.window.showErrorMessage(
         "NeuroCode: Configure an LLM provider in settings to use scaffolding."
       );
       return;
     }
-    const workspaceFolders = vscode7.workspace.workspaceFolders;
+    const workspaceFolders = vscode6.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
-      vscode7.window.showErrorMessage("NeuroCode: Open a workspace folder before scaffolding.");
+      vscode6.window.showErrorMessage("NeuroCode: Open a workspace folder before scaffolding.");
       return;
     }
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
-    await vscode7.window.withProgress(
+    await vscode6.window.withProgress(
       {
-        location: vscode7.ProgressLocation.Notification,
+        location: vscode6.ProgressLocation.Notification,
         title: `NeuroCode: Scaffolding "${assignment.metadata.title}"...`,
         cancellable: false
       },
@@ -45381,13 +45291,13 @@ var NeurocodeController = class {
               });
             }
           );
-          vscode7.window.showInformationMessage(
+          vscode6.window.showInformationMessage(
             `NeuroCode: Project scaffold complete for "${assignment.metadata.title}"`
           );
         } catch (error48) {
           const msg = error48 instanceof Error ? error48.message : String(error48);
           Logger.error("Scaffold failed:", error48);
-          vscode7.window.showErrorMessage(`NeuroCode: Scaffold failed \u2014 ${msg}`);
+          vscode6.window.showErrorMessage(`NeuroCode: Scaffold failed \u2014 ${msg}`);
         }
       }
     );
@@ -45432,10 +45342,10 @@ var NeurocodeController = class {
    * Show the preferences configuration panel.
    */
   showPreferencesPanel() {
-    const panel = vscode7.window.createWebviewPanel(
+    const panel = vscode6.window.createWebviewPanel(
       "neurocodePreferences",
       "NeuroCode Preferences",
-      vscode7.ViewColumn.One,
+      vscode6.ViewColumn.One,
       { enableScripts: true }
     );
     panel.webview.html = this.wrapPreferencesHtml(
@@ -45471,12 +45381,6 @@ var NeurocodeController = class {
 </style>
 </head><body>${innerHtml}</body></html>`;
   }
-  /**
-   * Show the dashboard/main view.
-   */
-  showDashboard() {
-    this.postStateToWebview();
-  }
   // ─── Lifecycle ──────────────────────────────────────────────────
   /**
    * Dispose all resources.
@@ -45500,7 +45404,7 @@ var NeurocodeController = class {
 };
 
 // src/shared/ConfigService.ts
-var vscode8 = __toESM(require("vscode"));
+var vscode7 = __toESM(require("vscode"));
 var ConfigService = class _ConfigService {
   current;
   callbacks = [];
@@ -45508,7 +45412,7 @@ var ConfigService = class _ConfigService {
   constructor() {
     this.current = _ConfigService.readFromVscode();
     this.disposables.push(
-      vscode8.workspace.onDidChangeConfiguration((e2) => {
+      vscode7.workspace.onDidChangeConfiguration((e2) => {
         if (e2.affectsConfiguration("neurocode")) {
           const prev = this.current;
           this.current = _ConfigService.readFromVscode();
@@ -45543,21 +45447,13 @@ var ConfigService = class _ConfigService {
    * Read current config from VS Code settings.
    */
   static readFromVscode() {
-    const c2 = vscode8.workspace.getConfiguration("neurocode");
+    const c2 = vscode7.workspace.getConfiguration("neurocode");
     return {
       llmProvider: c2.get("llmProvider", "anthropic"),
       llmModel: c2.get("llmModel", ""),
       llmBaseUrl: c2.get("llmBaseUrl", ""),
       anthropicApiKey: c2.get("anthropicApiKey", ""),
-      openaiApiKey: c2.get("openaiApiKey", ""),
-      neurodiversityProfile: c2.get("neurodiversityProfile", "neurotypical"),
-      fontSize: c2.get("fontSize", 14),
-      fontFamily: c2.get("fontFamily", "default"),
-      lineSpacing: c2.get("lineSpacing", 1.5),
-      colorScheme: c2.get("colorScheme", "default"),
-      focusMode: c2.get("focusMode", false),
-      textToSpeech: c2.get("textToSpeech", false),
-      taskGranularity: c2.get("taskGranularity", "standard")
+      openaiApiKey: c2.get("openaiApiKey", "")
     };
   }
   /**
@@ -46187,7 +46083,7 @@ var PromptBuilder = class {
 var controller;
 async function activate(context) {
   const startTime = performance.now();
-  const outputChannel2 = vscode9.window.createOutputChannel("NeuroCode Adapter");
+  const outputChannel2 = vscode8.window.createOutputChannel("NeuroCode Adapter");
   Logger.initialize(outputChannel2);
   context.subscriptions.push(outputChannel2);
   Logger.log("NeuroCode Adapter activating...");
@@ -46202,7 +46098,7 @@ async function activate(context) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     Logger.error("Failed to load prompt templates:", err);
-    vscode9.window.showErrorMessage(
+    vscode8.window.showErrorMessage(
       `NeuroCode Adapter: prompt templates failed to load. LLM features will not work. Reinstall the extension if the problem persists. Details: ${msg}`
     );
   }
@@ -46212,7 +46108,7 @@ async function activate(context) {
   context.subscriptions.push(configService);
   const webviewManager = new WebviewManager(context.extensionUri);
   context.subscriptions.push(
-    vscode9.window.registerWebviewViewProvider(
+    vscode8.window.registerWebviewViewProvider(
       WebviewManager.VIEW_ID,
       webviewManager,
       { webviewOptions: { retainContextWhenHidden: true } }
@@ -46229,11 +46125,10 @@ function registerCommands(context, ctrl) {
     ["neurocode.openAssignment", () => ctrl.promptAndLoadAssignment()],
     ["neurocode.configurePreferences", () => ctrl.showPreferencesPanel()],
     ["neurocode.getAIHelp", () => ctrl.requestAdaptation("help_request")],
-    ["neurocode.scaffoldProject", () => ctrl.requestScaffold()],
-    ["neurocode.showDashboard", () => ctrl.showDashboard()]
+    ["neurocode.scaffoldProject", () => ctrl.requestScaffold()]
   ];
   for (const [id, handler] of commands3) {
-    context.subscriptions.push(vscode9.commands.registerCommand(id, handler));
+    context.subscriptions.push(vscode8.commands.registerCommand(id, handler));
   }
   Logger.log(`Registered ${commands3.length} commands`);
 }

@@ -32,12 +32,7 @@
       {
         "command": "neurocode.scaffoldProject",
         "title": "NeuroCode: Scaffold Project"
-      },
-      {
-        "command": "neurocode.showDashboard",
-        "title": "NeuroCode: Show Dashboard"
-      },
-
+      }
     ],
     "viewsContainers": {
       "activitybar": [

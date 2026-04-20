@@ -587,13 +587,6 @@ export class NeurocodeController implements vscode.Disposable {
 </head><body>${innerHtml}</body></html>`;
   }
 
-  /**
-   * Show the dashboard/main view.
-   */
-  showDashboard(): void {
-    this.postStateToWebview();
-  }
-
   // ─── Lifecycle ──────────────────────────────────────────────────
 
   /**
