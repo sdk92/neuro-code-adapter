@@ -18,77 +18,15 @@ export class PreferenceManager implements vscode.Disposable {
   private context: vscode.ExtensionContext;
   private currentPreferences: UserPreferences;
   private changeCallbacks: PreferenceChangeCallback[] = [];
-  private disposables: vscode.Disposable[] = [];
 
   private static readonly STORAGE_KEY = "neurocode.userPreferences";
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
-
-    // Load saved preferences or initialize from VS Code settings
-    const saved = context.globalState.get<UserPreferences>(PreferenceManager.STORAGE_KEY);
-    if (saved) {
-      this.currentPreferences = saved;
-    } else {
-      const config = vscode.workspace.getConfiguration("neurocode");
-      const profileType = config.get<NeurodiversityType>("neurodiversityProfile", "neurotypical");
-      this.currentPreferences = getDefaultPreferences(profileType);
-      this.syncFromVscodeSettings(config);
-    }
-
-    // Watch for VS Code settings changes
-    this.disposables.push(
-      vscode.workspace.onDidChangeConfiguration((e) => {
-        if (e.affectsConfiguration("neurocode")) {
-          const config = vscode.workspace.getConfiguration("neurocode");
-          this.syncFromVscodeSettings(config);
-        }
-      })
-    );
-
+    this.currentPreferences =
+      context.globalState.get<UserPreferences>(PreferenceManager.STORAGE_KEY) ??
+      getDefaultPreferences("neurotypical");
     Logger.log(`PreferenceManager initialized: profile=${this.currentPreferences.neurodiversityType}`);
-  }
-
-  /**
-   * Sync individual VS Code settings into the preference object.
-   */
-  private syncFromVscodeSettings(config: vscode.WorkspaceConfiguration): void {
-    const profileType = config.get<NeurodiversityType>("neurodiversityProfile");
-    if (profileType && profileType !== this.currentPreferences.neurodiversityType) {
-      this.setProfile(profileType);
-      return;
-    }
-
-    // REFACTORED: Replaced 40+ lines of repetitive get/compare/set with a helper.
-    let changed = false;
-
-    const sync = <T>(key: string, current: T, setter: (v: T) => void): void => {
-      const value = config.get<T>(key);
-      if (value !== undefined && value !== current) {
-        setter(value);
-        changed = true;
-      }
-    };
-
-    sync("fontSize", this.currentPreferences.visual.fontSize,
-      (v) => { this.currentPreferences.visual.fontSize = v; });
-    sync("fontFamily", this.currentPreferences.visual.fontFamily,
-      (v) => { this.currentPreferences.visual.fontFamily = v; });
-    sync("lineSpacing", this.currentPreferences.visual.lineSpacing,
-      (v) => { this.currentPreferences.visual.lineSpacing = v; });
-    sync("colorScheme", this.currentPreferences.visual.colorScheme,
-      (v) => { this.currentPreferences.visual.colorScheme = v as any; });
-    sync("focusMode", this.currentPreferences.cognitive.focusMode,
-      (v) => { this.currentPreferences.cognitive.focusMode = v; });
-    sync("textToSpeech", this.currentPreferences.cognitive.textToSpeech,
-      (v) => { this.currentPreferences.cognitive.textToSpeech = v; });
-    sync("taskGranularity", this.currentPreferences.structural.taskGranularity,
-      (v) => { this.currentPreferences.structural.taskGranularity = v as any; });
-
-    if (changed) {
-      this.save();
-      this.notifyChange();
-    }
   }
 
   /**
@@ -278,7 +216,6 @@ export class PreferenceManager implements vscode.Disposable {
   }
 
   dispose(): void {
-    this.disposables.forEach((d) => d.dispose());
     this.changeCallbacks = [];
   }
 }

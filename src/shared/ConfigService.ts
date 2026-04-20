@@ -13,21 +13,11 @@ import { Logger } from "./logger";
 // ─── Config snapshot ─────────────────────────────────────────────────────────
 
 export interface NeurocodeConfig {
-  // LLM provider settings
   llmProvider: "anthropic" | "openai";
   llmModel: string;
   llmBaseUrl: string;
   anthropicApiKey: string;
   openaiApiKey: string;
-  // Profile & UI settings
-  neurodiversityProfile: string;
-  fontSize: number;
-  fontFamily: string;
-  lineSpacing: number;
-  colorScheme: string;
-  focusMode: boolean;
-  textToSpeech: boolean;
-  taskGranularity: "combined" | "standard" | "detailed";
 }
 
 type ConfigChangeCallback = (config: NeurocodeConfig, changed: Set<string>) => void;
@@ -92,14 +82,6 @@ export class ConfigService implements vscode.Disposable {
       llmBaseUrl: c.get<string>("llmBaseUrl", ""),
       anthropicApiKey: c.get<string>("anthropicApiKey", ""),
       openaiApiKey: c.get<string>("openaiApiKey", ""),
-      neurodiversityProfile: c.get<string>("neurodiversityProfile", "neurotypical"),
-      fontSize: c.get<number>("fontSize", 14),
-      fontFamily: c.get<string>("fontFamily", "default"),
-      lineSpacing: c.get<number>("lineSpacing", 1.5),
-      colorScheme: c.get<string>("colorScheme", "default"),
-      focusMode: c.get<boolean>("focusMode", false),
-      textToSpeech: c.get<boolean>("textToSpeech", false),
-      taskGranularity: c.get<string>("taskGranularity", "standard") as NeurocodeConfig["taskGranularity"],
     };
   }
 
