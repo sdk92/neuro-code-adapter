@@ -12,7 +12,7 @@ import * as path from "path";
 import { z } from "zod";
 import type { LlmProvider, LlmResponseBlock } from "@services/llm/LlmProvider";
 import type { Assignment, AssignmentSection, AssignmentMetadata } from "@shared/types";
-import { AssignmentSchema } from "@shared/schemas";
+import { AssignmentSchema, getAllowedProfileTypes } from "@shared/schemas";
 import type { PromptBuilder } from "@services/prompts";
 import { Logger } from "@shared/logger";
 
@@ -325,7 +325,7 @@ export function inferDifficulty(text: string): AssignmentMetadata["difficulty"] 
 export function validateAndNormalise(raw: unknown, fileName: string): Assignment {
   // Inject filename-derived title fallback BEFORE Zod parses, so the
   // schema's generic default doesn't clobber it.
-  const withFilenameDefault =
+  let normalised: unknown =
     raw && typeof raw === "object"
       ? {
           ...(raw as Record<string, unknown>),
@@ -337,6 +337,32 @@ export function validateAndNormalise(raw: unknown, fileName: string): Assignment
           },
         }
       : raw;
+
+  // LLMs occasionally return sections as a JSON-encoded string instead of an
+  // array. Parse it here so Zod sees the right type.
+  if (normalised && typeof normalised === "object" && typeof (normalised as any).sections === "string") {
+    try {
+      (normalised as any).sections = JSON.parse((normalised as any).sections);
+    } catch {
+      // Leave as-is — Zod will produce a clear error message.
+    }
+  }
+
+  // LLMs sometimes emit task-domain keys in adaptationHints (e.g. "styleGuide")
+  // instead of neurodiversity profile names ("adhd", "dyslexia", …).
+  // Strip unknown keys so an otherwise valid assignment isn't rejected.
+  if (normalised && typeof normalised === "object") {
+    const hints = (normalised as any).adaptationHints;
+    if (hints && typeof hints === "object" && !Array.isArray(hints)) {
+      const validKeys = new Set(getAllowedProfileTypes());
+      const filtered = Object.fromEntries(
+        Object.entries(hints as Record<string, unknown>).filter(([k]) => validKeys.has(k)),
+      );
+      (normalised as any).adaptationHints = Object.keys(filtered).length > 0 ? filtered : undefined;
+    }
+  }
+
+  const withFilenameDefault = normalised;
 
   const result = AssignmentSchema.safeParse(withFilenameDefault);
   if (!result.success) {

@@ -265,7 +265,7 @@ export class AdaptationEngine {
     const response = await this.provider!.completeWithTools({
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
-      maxTokens: 64000,
+      maxTokens: 13784,
       tools: [tool],
       toolChoice: { type: "tool", name: tool.name },
     });

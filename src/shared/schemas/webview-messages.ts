@@ -63,6 +63,11 @@ const ScaffoldApprovalResponseMessage = z.object({
   approved: z.boolean(),
 });
 
+const SectionViewedMessage = z.object({
+  type: z.literal("section_viewed"),
+  sectionId: z.string().optional(),
+});
+
 // ─── Discriminated union (inferrable) ────────────────────────────────────────
 
 /**
@@ -87,6 +92,7 @@ export const WebviewMessageSchema = z.discriminatedUnion("type", [
   ConnectMcpMessage,
   ApplyPreferencesMessage,
   ScaffoldApprovalResponseMessage,
+  SectionViewedMessage,
 ]);
 
 export type WebviewMessage = z.infer<typeof WebviewMessageSchema>;
