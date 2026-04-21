@@ -60,14 +60,14 @@
     },
     "pdf-structuring.system": {
       "path": "pdf-structuring/system.md",
-      "version": "1.0.0",
-      "description": "System prompt for Tier 1 PDF → structured JSON conversion.",
+      "version": "2.0.0",
+      "description": "System prompt for Tier 1 PDF → structured Assignment via submit_assignment tool use.",
       "requiredVars": []
     },
     "pdf-structuring.user": {
       "path": "pdf-structuring/user.md",
-      "version": "1.0.0",
-      "description": "User prompt that accompanies the PDF document input.",
+      "version": "2.0.0",
+      "description": "User prompt accompanying the PDF document input; directs the model to the submit_assignment tool.",
       "requiredVars": ["fileName"]
     }
   }

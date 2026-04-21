@@ -75,6 +75,7 @@ export class AnthropicProvider implements LlmProvider {
       system: params.system,
       tools,
       messages,
+      ...(params.toolChoice ? { tool_choice: { type: "tool" as const, name: params.toolChoice.name } } : {}),
     });
 
     const content: LlmResponseBlock[] = response.content.map((block) => {

@@ -32,6 +32,10 @@
       {
         "command": "neurocode.scaffoldProject",
         "title": "NeuroCode: Scaffold Project"
+      },
+      {
+        "command": "neurocode.fullAdaptation",
+        "title": "NeuroCode: Full Adaptation"
       }
     ],
     "viewsContainers": {

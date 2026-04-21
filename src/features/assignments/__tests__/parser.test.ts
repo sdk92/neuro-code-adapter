@@ -1,17 +1,15 @@
 /**
- * Tests for the heuristic PDF parser (Tier 2 offline fallback).
+ * Tests for the PDF assignment parser.
  *
- * The Tier 1 LLM path is covered by end-to-end testing; the heuristic
- * fallback is where deterministic behavior is possible, so this is where
- * we pin it down. These tests matter for the thesis Evaluation chapter:
- * "what happens when the API is unavailable?" needs a verifiable answer.
- *
- * Each test targets one of the four exported pure functions:
- *   - classifySectionTitle   (keyword → section type)
- *   - classifyLabel          (leading label word → section type)
- *   - inferDifficulty        (content complexity → difficulty)
- *   - structureViaHeuristics (raw text → Assignment)
- *   - validateAndNormalise   (untrusted object → Assignment)
+ * Coverage:
+ *   - Tier 2 heuristic fallback (classifySectionTitle, classifyLabel,
+ *     inferDifficulty, structureViaHeuristics) — deterministic, extensively
+ *     pinned down for thesis Evaluation.
+ *   - validateAndNormalise (Zod-backed, untrusted input → Assignment).
+ *   - Tier 1 tool-use path — end-to-end LLM calls are not replayed here,
+ *     but the pseudo-tool definition and parseAssignmentFile's branching
+ *     logic (tool_use present / missing / malformed / truncated) are mocked
+ *     and verified. Mirrors AdaptationEngine.test.ts in structure.
  */
 import {
   classifySectionTitle,
@@ -19,7 +17,16 @@ import {
   inferDifficulty,
   structureViaHeuristics,
   validateAndNormalise,
+  parseAssignmentFile,
+  getAssignmentToolDefinition,
+  ASSIGNMENT_TOOL_NAME,
 } from "../parser";
+import type {
+  LlmProvider,
+  LlmToolCompletionParams,
+  LlmToolResponse,
+} from "@services/llm/LlmProvider";
+import type { PromptBuilder } from "@services/prompts";
 
 describe("classifySectionTitle", () => {
   it.each([
@@ -292,3 +299,204 @@ describe("validateAndNormalise", () => {
     ).toThrow(/validation failed/i);
   });
 });
+
+// ─── Tier 1 tool-use path ────────────────────────────────────────────────────
+
+describe("getAssignmentToolDefinition", () => {
+  it("returns a tool named submit_assignment", () => {
+    const def = getAssignmentToolDefinition();
+    expect(def.name).toBe(ASSIGNMENT_TOOL_NAME);
+    expect(def.name).toBe("submit_assignment");
+  });
+
+  it("schema has `metadata` and `sections` as required properties", () => {
+    const def = getAssignmentToolDefinition();
+    const schema = def.inputSchema as {
+      required: string[];
+      properties: Record<string, unknown>;
+    };
+    // AssignmentSchema has no default on these two roots, so they're required.
+    // starterCode / testCases / adaptationHints are optional.
+    expect(schema.required).toEqual(
+      expect.arrayContaining(["metadata", "sections"]),
+    );
+    expect(Object.keys(schema.properties)).toEqual(
+      expect.arrayContaining([
+        "metadata",
+        "sections",
+        "starterCode",
+        "testCases",
+      ]),
+    );
+  });
+
+  it("produces a JSON Schema convertible to string (no transform errors)", () => {
+    // Regression guard: ensures AssignmentSchema stays free of constructs
+    // that z.toJSONSchema can't represent on the input side (e.g. .transform
+    // without io:"input"). Matches the class of bug that previously broke
+    // AdaptationEngine silently.
+    const def = getAssignmentToolDefinition();
+    expect(() => JSON.stringify(def.inputSchema)).not.toThrow();
+  });
+});
+
+// ─── parseAssignmentFile (Tier 1) branching ─────────────────────────────────
+
+const VALID_TOOL_INPUT = {
+  metadata: {
+    id: "hello-world-101",
+    title: "Hello World",
+    description: "Introductory exercise.",
+    author: "Dr. Tester",
+    difficulty: "beginner",
+    estimatedMinutes: 15,
+    language: "Python",
+    tags: ["intro"],
+  },
+  sections: [
+    {
+      id: "section_0",
+      title: "Introduction",
+      content: "Welcome.",
+      type: "instruction",
+      order: 0,
+    },
+  ],
+};
+
+function makeProvider(
+  overrides: Partial<{
+    toolInput: Record<string, unknown>;
+    stopReason: string;
+    throws: Error;
+    supportsDocumentInput: boolean;
+  }> = {},
+): LlmProvider {
+  return {
+    name: "MockProvider",
+    model: "mock-model",
+    supportsDocumentInput: overrides.supportsDocumentInput ?? true,
+    complete: jest.fn(),
+    completeWithTools: jest
+      .fn()
+      .mockImplementation(
+        async (
+          _params: LlmToolCompletionParams,
+        ): Promise<LlmToolResponse> => {
+          if (overrides.throws) {
+            throw overrides.throws;
+          }
+          const stopReason = overrides.stopReason ?? "tool_use";
+          const content = overrides.toolInput
+            ? [
+                {
+                  type: "tool_use" as const,
+                  id: "tu_1",
+                  name: ASSIGNMENT_TOOL_NAME,
+                  input: overrides.toolInput,
+                },
+              ]
+            : [{ type: "text" as const, text: "I forgot to call the tool." }];
+          return { content, stopReason };
+        },
+      ),
+    dispose: jest.fn(),
+  };
+}
+
+function makePromptBuilder(): PromptBuilder {
+  return {
+    from: jest.fn().mockReturnValue({
+      buildText: jest.fn().mockReturnValue("mock prompt"),
+    }),
+  } as unknown as PromptBuilder;
+}
+
+/**
+ * Minimal PDF buffer — pdf-parse never runs on the Tier 1 path, so the
+ * contents are irrelevant. Tier 2 fallback does call pdf-parse, which
+ * is what we exercise in the "falls back" tests.
+ */
+const FAKE_PDF = Buffer.from("%PDF-1.4\n%fake\n");
+
+describe("parseAssignmentFile — Tier 1 tool-use path", () => {
+  it("returns the validated assignment when the model calls submit_assignment", async () => {
+    const provider = makeProvider({ toolInput: VALID_TOOL_INPUT });
+    const result = await parseAssignmentFile(
+      FAKE_PDF,
+      "hello.pdf",
+      provider,
+      makePromptBuilder(),
+    );
+
+    expect(result.metadata.title).toBe("Hello World");
+    expect(result.sections).toHaveLength(1);
+    expect(result.sections[0].id).toBe("section_0");
+    expect(provider.completeWithTools).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends toolChoice: { type: 'tool', name: 'submit_assignment' }", async () => {
+    const provider = makeProvider({ toolInput: VALID_TOOL_INPUT });
+    await parseAssignmentFile(
+      FAKE_PDF,
+      "hello.pdf",
+      provider,
+      makePromptBuilder(),
+    );
+
+    const call = (provider.completeWithTools as jest.Mock).mock
+      .calls[0][0] as LlmToolCompletionParams;
+    expect(call.toolChoice).toEqual({
+      type: "tool",
+      name: ASSIGNMENT_TOOL_NAME,
+    });
+    expect(call.tools).toHaveLength(1);
+    expect(call.tools[0].name).toBe(ASSIGNMENT_TOOL_NAME);
+  });
+
+  it("falls back to Tier 2 heuristics when the model returns only text", async () => {
+    // No toolInput → provider returns a text block → Tier 1 throws →
+    // parseAssignmentFile catches it and tries pdf-parse. With our fake PDF
+    // buffer pdf-parse will fail too, so we assert the error message names
+    // the Tier 2 tool — that's evidence the fallback branch ran.
+    const provider = makeProvider({});
+    await expect(
+      parseAssignmentFile(FAKE_PDF, "hello.pdf", provider, makePromptBuilder()),
+    ).rejects.toThrow(/Failed to parse PDF/);
+  });
+
+  it("falls back to Tier 2 when stopReason is max_tokens", async () => {
+    const provider = makeProvider({
+      toolInput: VALID_TOOL_INPUT,
+      stopReason: "max_tokens",
+    });
+    await expect(
+      parseAssignmentFile(FAKE_PDF, "hello.pdf", provider, makePromptBuilder()),
+    ).rejects.toThrow(/Failed to parse PDF/);
+  });
+
+  it("falls back to Tier 2 when tool input fails schema validation", async () => {
+    const badInput = { metadata: { title: "X" }, sections: [] }; // empty sections violates .min(1)
+    const provider = makeProvider({ toolInput: badInput });
+    await expect(
+      parseAssignmentFile(FAKE_PDF, "hello.pdf", provider, makePromptBuilder()),
+    ).rejects.toThrow(/Failed to parse PDF/);
+  });
+
+  it("falls back to Tier 2 when the provider throws", async () => {
+    const provider = makeProvider({ throws: new Error("network error") });
+    await expect(
+      parseAssignmentFile(FAKE_PDF, "hello.pdf", provider, makePromptBuilder()),
+    ).rejects.toThrow(/Failed to parse PDF/);
+  });
+
+  it("skips Tier 1 when provider.supportsDocumentInput is false", async () => {
+    // Should never call completeWithTools, goes straight to Tier 2.
+    const provider = makeProvider({ supportsDocumentInput: false });
+    await expect(
+      parseAssignmentFile(FAKE_PDF, "hello.pdf", provider, makePromptBuilder()),
+    ).rejects.toThrow(/Failed to parse PDF/);
+    expect(provider.completeWithTools).not.toHaveBeenCalled();
+  });
+});
+

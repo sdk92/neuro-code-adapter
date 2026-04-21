@@ -14,7 +14,8 @@
  * Inspired by Cline's multi-provider architecture (ApiHandler / ApiProvider),
  * with the prompt layer swapped for a manifest-driven template store.
  */
-import type { LlmProvider } from "./LlmProvider";
+import { z } from "zod";
+import type { LlmProvider, LlmResponseBlock, LlmToolDef } from "./LlmProvider";
 import type { McpManager } from "@services/mcp/McpManager";
 import type {
   AdaptationRequest,
@@ -63,6 +64,40 @@ export function validateAdaptationResponse(raw: unknown): AdaptationResponse | n
   }
   return result.data;
 }
+
+export const ADAPTATION_TOOL_NAME = "submit_adaptation";
+
+export function getAdaptationToolDefinition() {
+  // Zod 4 → JSON Schema. Two options worth calling out:
+  //   target: "draft-7"  — the dialect both Anthropic and OpenAI consume cleanly.
+  //   io: "input"        — generate the schema for the *input* side of the
+  //                        pipeline. AdaptationResponseSchema.confidenceScore
+  //                        uses .transform() to clamp into [0, 1]; without
+  //                        io:"input" that transform throws
+  //                        "Transforms cannot be represented in JSON Schema".
+  //                        The LLM sees a plain `number`; the clamp is re-applied
+  //                        client-side when we Zod-parse the tool input.
+  const inputSchema = z.toJSONSchema(AdaptationResponseSchema, {
+    target: "draft-7",
+    io: "input",
+  }) as Record<string, unknown>;
+
+  return {
+    name: ADAPTATION_TOOL_NAME,
+    description:
+      "Submit the adapted assignment view. Call this tool exactly once with " +
+      "the fully adapted content, visual modifications, and structural changes " +
+      "tailored to the learner's neurodiversity profile. `confidenceScore` " +
+      "should be between 0 and 1 inclusive. Do not include any prose before or " +
+      "after the tool call — the tool input IS your complete response.",
+    // Field name is `inputSchema` (camelCase) to satisfy LlmToolDef — providers
+    // map to the API-specific name (`input_schema` for Anthropic, `parameters`
+    // nested under `function` for OpenAI).
+    inputSchema,
+  };
+}
+
+export type AdaptationToolDefinition = ReturnType<typeof getAdaptationToolDefinition>;
 
 // ─── Engine ──────────────────────────────────────────────────────────────────
 
@@ -221,32 +256,37 @@ export class AdaptationEngine {
     const { text: systemPrompt, receipt: systemReceipt } = this.buildSystemPrompt();
     const { text: userPrompt, receipt: userReceipt } = this.buildUserPrompt(request);
 
-    // Merge receipts for full attribution
     const receipt: BuildReceipt = {
       manifestVersion: systemReceipt.manifestVersion,
       templates: [...systemReceipt.templates, ...userReceipt.templates],
     };
 
-    const response = await this.provider!.complete({
+    const tool = getAdaptationToolDefinition();
+    const response = await this.provider!.completeWithTools({
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
       maxTokens: 64000,
+      tools: [tool],
+      toolChoice: { type: "tool", name: tool.name },
     });
 
     if (response.stopReason === "max_tokens") {
-      throw new Error("Response truncated: output exceeded max_tokens, JSON will be incomplete");
+      throw new Error("Response truncated: output exceeded max_tokens");
     }
 
-    let jsonStr = response.text.trim();
-    const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) {
-      jsonStr = jsonMatch[1].trim();
+    const toolUseBlock = response.content.find(
+      (b): b is Extract<LlmResponseBlock, { type: "tool_use" }> => b.type === "tool_use"
+    );
+
+    if (!toolUseBlock) {
+      throw new Error(
+        `Model did not call the adaptation tool (stop_reason: ${response.stopReason})`
+      );
     }
 
-    const parsed = JSON.parse(jsonStr);
-    const validated = validateAdaptationResponse(parsed);
+    const validated = validateAdaptationResponse(toolUseBlock.input);
     if (!validated) {
-      throw new Error("Invalid adaptation response schema from provider");
+      throw new Error("Invalid adaptation response schema from provider tool call");
     }
 
     return { ...validated, strategy: "provider", receipt };

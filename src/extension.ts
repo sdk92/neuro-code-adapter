@@ -100,6 +100,7 @@ function registerCommands(
     ["neurocode.configurePreferences", () => ctrl.showPreferencesPanel()],
     ["neurocode.getAIHelp", () => ctrl.requestAdaptation("help_request")],
     ["neurocode.scaffoldProject", () => ctrl.requestScaffold()],
+    ["neurocode.fullAdaptation", () => ctrl.requestAdaptation("full_adaptation")],
   ];
 
   for (const [id, handler] of commands) {

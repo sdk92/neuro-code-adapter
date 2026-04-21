@@ -114,6 +114,9 @@ export class OpenAiProvider implements LlmProvider {
     if (tools.length > 0) {
       body.tools = tools;
     }
+    if (params.toolChoice) {
+      body.tool_choice = { type: "function", function: { name: params.toolChoice.name } };
+    }
 
     const data = await this.postChatCompletions(body);
     const choice = data.choices?.[0];

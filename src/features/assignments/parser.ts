@@ -9,7 +9,8 @@
  * Tier 2 (offline fallback): pdf-parse text extraction → heuristic parsing
  */
 import * as path from "path";
-import type { LlmProvider } from "@services/llm/LlmProvider";
+import { z } from "zod";
+import type { LlmProvider, LlmResponseBlock } from "@services/llm/LlmProvider";
 import type { Assignment, AssignmentSection, AssignmentMetadata } from "@shared/types";
 import { AssignmentSchema } from "@shared/schemas";
 import type { PromptBuilder } from "@services/prompts";
@@ -58,7 +59,46 @@ export function clearExtractionCache(): void {
   extractionCache.clear();
 }
 
-// ─── Tier 1: direct PDF input via LLM (now template-driven) ─────────────────
+// ─── Tier 1 tool definition ─────────────────────────────────────────────────
+
+/**
+ * Name of the pseudo-tool the LLM calls to return a structured Assignment.
+ *
+ * This is never actually executed — it exists purely to constrain the model's
+ * output shape. The old approach (assistant-prefill "{" to force JSON) broke
+ * on claude-sonnet-4-6 which rejects messages that don't end on a user turn;
+ * tool-use is the Anthropic-recommended replacement.
+ */
+export const ASSIGNMENT_TOOL_NAME = "submit_assignment";
+
+export function getAssignmentToolDefinition() {
+  // io:"input" matters because AssignmentSchema uses z.coerce.* and .default(...)
+  // throughout — those are fine for JSON Schema representation on the input
+  // side, but any future .transform() would throw without this flag.
+  // See AdaptationEngine.getAdaptationToolDefinition for the same rationale.
+  const inputSchema = z.toJSONSchema(AssignmentSchema, {
+    target: "draft-7",
+    io: "input",
+  }) as Record<string, unknown>;
+
+  return {
+    name: ASSIGNMENT_TOOL_NAME,
+    description:
+      "Submit the parsed programming assignment. Call this tool exactly once " +
+      "with the assignment broken into metadata + ordered sections. " +
+      "For sections of type 'task', the content field MUST use the three-part " +
+      "Markdown structure described in the system prompt (### Background / " +
+      "### What to do / ### Acceptance criteria). Preserve LaTeX math and " +
+      "fenced code blocks verbatim. Do not include any prose before or after " +
+      "the tool call — the tool input IS your complete response.",
+    // camelCase to satisfy LlmToolDef; providers map to the API-specific name.
+    inputSchema,
+  };
+}
+
+export type AssignmentToolDefinition = ReturnType<typeof getAssignmentToolDefinition>;
+
+// ─── Tier 1: direct PDF input via LLM (now tool-use driven) ─────────────────
 
 async function structureViaDirectPdf(
   pdfBuffer: Buffer,
@@ -86,7 +126,13 @@ async function structureViaDirectPdf(
     .from("pdf-structuring.user", { fileName })
     .buildText();
 
-  const response = await provider.complete({
+  // REFACTORED: was assistant-prefill "{" to force JSON. Replaced with tool-use
+  // because prefill is not supported on claude-sonnet-4-6 (which rejects any
+  // conversation that doesn't end with a user turn). Tool-use is also a
+  // stronger structural guarantee — the model receives the Assignment schema
+  // directly and the SDK returns parsed input, eliminating a JSON.parse step.
+  const tool = getAssignmentToolDefinition();
+  const response = await provider.completeWithTools({
     system: systemPrompt,
     messages: [
       {
@@ -96,20 +142,35 @@ async function structureViaDirectPdf(
           { type: "text", text: userPrompt },
         ],
       },
-      // Prefill "{" to force JSON output immediately
-      { role: "assistant", content: "{" },
     ],
     maxTokens: 8192,
+    tools: [tool],
+    toolChoice: { type: "tool", name: tool.name },
   });
 
-  let jsonStr = "{" + response.text.trim();
-  const jsonMatch = jsonStr.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/);
-  if (jsonMatch) {
-    jsonStr = jsonMatch[1].trim();
+  if (response.stopReason === "max_tokens") {
+    throw new Error(
+      "Response truncated: PDF structuring exceeded max_tokens. " +
+      "Consider splitting the assignment or increasing maxTokens.",
+    );
   }
 
-  const parsed = JSON.parse(jsonStr);
-  return validateAndNormalise(parsed, fileName);
+  const toolUseBlock = response.content.find(
+    (b): b is Extract<LlmResponseBlock, { type: "tool_use" }> => b.type === "tool_use",
+  );
+
+  if (!toolUseBlock) {
+    const blockTypes = response.content.map((b) => b.type).join(", ") || "<none>";
+    throw new Error(
+      `Model did not call ${ASSIGNMENT_TOOL_NAME} ` +
+      `(stop_reason: ${response.stopReason}, content blocks: [${blockTypes}])`,
+    );
+  }
+
+  // toolUseBlock.input is already a parsed object (Anthropic SDK parsed the
+  // JSON for us; OpenAiProvider.parseResponseBlocks does the same). Zod
+  // validation then applies coercions, defaults, and strict enum checks.
+  return validateAndNormalise(toolUseBlock.input, fileName);
 }
 
 // ─── Tier 2: heuristic parsing (unchanged) ──────────────────────────────────

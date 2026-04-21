@@ -85,6 +85,8 @@ export interface LlmCompletionParams {
 
 export interface LlmToolCompletionParams extends LlmCompletionParams {
   tools: LlmToolDef[];
+  /** Force the model to call a specific tool. */
+  toolChoice?: { type: "tool"; name: string };
 }
 
 // ─── Provider interface ─────────────────────────────────────────────────────
