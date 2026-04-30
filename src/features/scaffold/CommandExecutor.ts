@@ -1,113 +1,151 @@
 /**
- * CommandExecutor — Runs shell commands in a VS Code terminal.
+ * CommandExecutor — Runs shell commands via child_process.spawn.
  *
- * Uses the VS Code Terminal API (sendText) for command execution.
- * Output is captured by writing a sentinel line after the command,
- * then reading via a pty pseudo-terminal shell integration approach.
+ * REFACTORED: dropped VS Code Terminal + shell integration entirely.
+ * Reason: shell integration is unreliable in many Linux/root/SSH/container
+ * setups (OSC 633 markers get swallowed by custom prompts or non-bash shells),
+ * causing onDidEndTerminalShellExecution to never fire and every command to
+ * stall on the 120s timeout (see scaffold logs from 2026-04-29).
  *
- * Safety: all commands go through a user approval gate before running.
+ * Now: spawn a child process per command, collect stdout/stderr directly,
+ * return real exit codes, and stream live output to a dedicated OutputChannel
+ * for user visibility.
  */
+import { spawn, type ChildProcess } from "child_process";
+import * as fs from "fs";
 import * as vscode from "vscode";
 import { Logger } from "@shared/logger";
 
+const DEFAULT_TIMEOUT_MS = 120_000;   // hard ceiling per command
+const KILL_GRACE_MS = 2_000;          // SIGTERM → SIGKILL grace period
+const MAX_OUTPUT_BYTES = 64 * 1024;   // cap to keep LLM context manageable
+
 export class CommandExecutor implements vscode.Disposable {
-  private terminal: vscode.Terminal | undefined;
+  private outputChannel: vscode.OutputChannel | undefined;
+  private readonly activeChildren = new Set<ChildProcess>();
+
+  constructor(private readonly timeoutMs: number = DEFAULT_TIMEOUT_MS) {}
 
   /**
-   * Execute a command in the dedicated NeuroCode terminal.
-   * Returns stdout/stderr as a combined string.
+   * Execute a command in a child process.
+   * Returns combined stdout+stderr (interleaved by arrival order) and exit code.
    */
   async execute(command: string, cwd?: string): Promise<{ output: string; exitCode: number }> {
-    // `cd` is a shell builtin with no output — shell integration's read() stream never
-    // terminates for it, causing a hang until the 120 s timeout. Callers should use the
-    // `cwd` parameter instead; intercept here as a safety net.
+    // Bare-cd short-circuit kept for safety: the LLM is told not to emit `cd`,
+    // but if it slips through, treat it as a no-op rather than spawning a shell
+    // whose chdir wouldn't persist anyway.
     const cdMatch = command.trim().match(/^cd\s+("?.+"?|'.+'|\S+)$/);
     if (cdMatch) {
-      Logger.log(`[CommandExecutor] Skipping bare 'cd' command (use cwd parameter instead): ${command}`);
+      Logger.log(`[CommandExecutor] Skipping bare 'cd' (use cwd parameter instead): ${command}`);
       return { output: "", exitCode: 0 };
     }
 
-    const terminal = this.getOrCreateTerminal(cwd);
+    const channel = this.getOrCreateChannel();
+    channel.appendLine("");
+    channel.appendLine(`$ ${command}`);
+    if (cwd) {channel.appendLine(`  (cwd: ${cwd})`);}
 
-    // Use shell integration API (VS Code 1.93+) if available for exit code capture.
-    // Falls back to fire-and-forget with assumed success.
-    if (terminal.shellIntegration) {
-      return this.executeWithShellIntegration(terminal, command);
+    // Pre-check cwd so we can give the LLM a clear ENOENT message instead of
+    // a cryptic spawn error.
+    if (cwd && !fs.existsSync(cwd)) {
+      const msg = `Working directory does not exist: ${cwd}`;
+      Logger.warn(`[CommandExecutor] ${msg}`);
+      channel.appendLine(`  ✗ ${msg}`);
+      return { output: msg, exitCode: 1 };
     }
 
-    return this.executeFireAndForget(terminal, command);
-  }
+    return new Promise<{ output: string; exitCode: number }>((resolve) => {
+      let child: ChildProcess;
+      try {
+        child = spawn(command, {
+          cwd,
+          shell: true,                        // let /bin/sh parse &&, ||, quotes, globs
+          env: {
+            ...process.env,
+            FORCE_COLOR: "0",                 // suppress ANSI escapes in captured output
+            NO_COLOR: "1",
+          },
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        Logger.error(`[CommandExecutor] spawn failed: ${msg}`);
+        channel.appendLine(`  ✗ spawn failed: ${msg}`);
+        resolve({ output: msg, exitCode: 1 });
+        return;
+      }
 
-  private async executeWithShellIntegration(
-    terminal: vscode.Terminal,
-    command: string
-  ): Promise<{ output: string; exitCode: number }> {
-    const execution = terminal.shellIntegration!.executeCommand(command);
-    const outputChunks: string[] = [];
+      this.activeChildren.add(child);
 
-    // Collect output
-    for await (const chunk of execution.read()) {
-      outputChunks.push(chunk);
-    }
-
-    // Exit code arrives via the onDidEndTerminalShellExecution event
-    // Timeout after 120s to avoid blocking the agentic loop indefinitely
-    const exitCode = await new Promise<number>((resolve) => {
-      const timer = setTimeout(() => {
-        disposable.dispose();
-        Logger.warn(`[CommandExecutor] Command timed out (120s): ${command}`);
-        resolve(1); // treat timeout as failure so Claude can recover
-      }, 120_000);
-
-      const disposable = vscode.window.onDidEndTerminalShellExecution((e) => {
-        if (e.execution === execution) {
-          clearTimeout(timer);
-          disposable.dispose();
-          resolve(e.exitCode ?? 0);
+      const chunks: string[] = [];
+      let collectedBytes = 0;
+      let truncated = false;
+      const collect = (data: Buffer): void => {
+        const s = data.toString();
+        // Always mirror live to the OutputChannel so the user sees progress…
+        channel.append(s);
+        // …but cap what we hand back to the LLM.
+        if (truncated) {return;}
+        const remaining = MAX_OUTPUT_BYTES - collectedBytes;
+        if (s.length > remaining) {
+          chunks.push(s.slice(0, remaining));
+          chunks.push("\n…[output truncated]…\n");
+          truncated = true;
+        } else {
+          chunks.push(s);
+          collectedBytes += s.length;
         }
+      };
+      child.stdout?.on("data", collect);
+      child.stderr?.on("data", collect);
+
+      let settled = false;
+      const settle = (output: string, exitCode: number): void => {
+        if (settled) {return;}
+        settled = true;
+        clearTimeout(timer);
+        this.activeChildren.delete(child);
+        channel.appendLine(`  → exit ${exitCode}`);
+        resolve({ output, exitCode });
+      };
+
+      const timer = setTimeout(() => {
+        Logger.warn(`[CommandExecutor] Command timed out (${this.timeoutMs}ms): ${command}`);
+        channel.appendLine(`  ✗ timed out after ${this.timeoutMs}ms — killing`);
+        try { child.kill("SIGTERM"); } catch { /* already dead */ }
+        // Escalate to SIGKILL if it doesn't go down quietly.
+        setTimeout(() => {
+          try { child.kill("SIGKILL"); } catch { /* already dead */ }
+        }, KILL_GRACE_MS);
+        // 'close' will still fire after kill — settlement happens there.
+      }, this.timeoutMs);
+
+      child.on("error", (err) => {
+        Logger.error(`[CommandExecutor] child error: ${err.message}`);
+        settle(`spawn error: ${err.message}`, 1);
+      });
+
+      child.on("close", (code, signal) => {
+        // 124 == GNU `timeout`'s convention; stable signal for the LLM to recognise.
+        const exitCode = code ?? (signal ? 124 : 1);
+        settle(chunks.join(""), exitCode);
       });
     });
-
-    return { output: outputChunks.join(""), exitCode };
   }
 
-  private async executeFireAndForget(
-    terminal: vscode.Terminal,
-    command: string
-  ): Promise<{ output: string; exitCode: number }> {
-    terminal.sendText(command, true);
-    // Without shell integration we can't capture output or exit code reliably.
-    // Wait briefly so the terminal has time to start, then return a placeholder.
-    await new Promise((r) => setTimeout(r, 500));
-    Logger.log(`[CommandExecutor] Sent (no shell integration): ${command}`);
-    return { output: "(command sent to terminal — check terminal for output)", exitCode: 0 };
-  }
-
-  private getOrCreateTerminal(cwd?: string): vscode.Terminal {
-    // Reuse existing terminal if still alive
-    if (this.terminal && !this.isTerminalClosed(this.terminal)) {
-      if (cwd) {
-        // cd into target directory before running next command
-        this.terminal.sendText(`cd "${cwd}"`, true);
-      }
-      return this.terminal;
+  private getOrCreateChannel(): vscode.OutputChannel {
+    if (!this.outputChannel) {
+      this.outputChannel = vscode.window.createOutputChannel("NeuroCode Scaffold");
+      this.outputChannel.show(true); // preserveFocus: true → visible but doesn't steal focus
     }
-
-    this.terminal = vscode.window.createTerminal({
-      name: "NeuroCode Scaffold",
-      cwd,
-      iconPath: new vscode.ThemeIcon("rocket"),
-    });
-    this.terminal.show(true); // show but don't steal focus
-    return this.terminal;
-  }
-
-  private isTerminalClosed(terminal: vscode.Terminal): boolean {
-    return !vscode.window.terminals.includes(terminal);
+    return this.outputChannel;
   }
 
   dispose(): void {
-    this.terminal?.dispose();
-    this.terminal = undefined;
+    for (const child of this.activeChildren) {
+      try { child.kill("SIGKILL"); } catch { /* already dead */ }
+    }
+    this.activeChildren.clear();
+    this.outputChannel?.dispose();
+    this.outputChannel = undefined;
   }
 }

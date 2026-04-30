@@ -6789,12 +6789,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f2;
     };
-    function addFormats(ajv, list2, fs3, exportName) {
+    function addFormats(ajv, list2, fs4, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f2 of list2)
-        ajv.addFormat(f2, fs3[f2]);
+        ajv.addFormat(f2, fs4[f2]);
     }
     module2.exports = exports2 = formatsPlugin;
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -6807,7 +6807,7 @@ var require_windows = __commonJS({
   "node_modules/isexe/windows.js"(exports2, module2) {
     module2.exports = isexe;
     isexe.sync = sync;
-    var fs3 = require("fs");
+    var fs4 = require("fs");
     function checkPathExt(path7, options2) {
       var pathext = options2.pathExt !== void 0 ? options2.pathExt : process.env.PATHEXT;
       if (!pathext) {
@@ -6832,12 +6832,12 @@ var require_windows = __commonJS({
       return checkPathExt(path7, options2);
     }
     function isexe(path7, options2, cb) {
-      fs3.stat(path7, function(er2, stat) {
+      fs4.stat(path7, function(er2, stat) {
         cb(er2, er2 ? false : checkStat(stat, path7, options2));
       });
     }
     function sync(path7, options2) {
-      return checkStat(fs3.statSync(path7), path7, options2);
+      return checkStat(fs4.statSync(path7), path7, options2);
     }
   }
 });
@@ -6847,14 +6847,14 @@ var require_mode = __commonJS({
   "node_modules/isexe/mode.js"(exports2, module2) {
     module2.exports = isexe;
     isexe.sync = sync;
-    var fs3 = require("fs");
+    var fs4 = require("fs");
     function isexe(path7, options2, cb) {
-      fs3.stat(path7, function(er2, stat) {
+      fs4.stat(path7, function(er2, stat) {
         cb(er2, er2 ? false : checkStat(stat, options2));
       });
     }
     function sync(path7, options2) {
-      return checkStat(fs3.statSync(path7), options2);
+      return checkStat(fs4.statSync(path7), options2);
     }
     function checkStat(stat, options2) {
       return stat.isFile() && checkMode(stat, options2);
@@ -6878,7 +6878,7 @@ var require_mode = __commonJS({
 // node_modules/isexe/index.js
 var require_isexe = __commonJS({
   "node_modules/isexe/index.js"(exports2, module2) {
-    var fs3 = require("fs");
+    var fs4 = require("fs");
     var core;
     if (process.platform === "win32" || global.TESTING_WINDOWS) {
       core = require_windows();
@@ -7142,16 +7142,16 @@ var require_shebang_command = __commonJS({
 var require_readShebang = __commonJS({
   "node_modules/cross-spawn/lib/util/readShebang.js"(exports2, module2) {
     "use strict";
-    var fs3 = require("fs");
+    var fs4 = require("fs");
     var shebangCommand = require_shebang_command();
     function readShebang(command) {
       const size = 150;
       const buffer = Buffer.alloc(size);
       let fd;
       try {
-        fd = fs3.openSync(command, "r");
-        fs3.readSync(fd, buffer, 0, size, 0);
-        fs3.closeSync(fd);
+        fd = fs4.openSync(command, "r");
+        fs4.readSync(fd, buffer, 0, size, 0);
+        fs4.closeSync(fd);
       } catch (e2) {
       }
       return shebangCommand(buffer.toString());
@@ -7279,7 +7279,7 @@ var require_cross_spawn = __commonJS({
     var cp = require("child_process");
     var parse3 = require_parse();
     var enoent = require_enoent();
-    function spawn2(command, args, options2) {
+    function spawn3(command, args, options2) {
       const parsed = parse3(command, args, options2);
       const spawned = cp.spawn(parsed.command, parsed.args, parsed.options);
       enoent.hookChildProcess(spawned, parsed);
@@ -7291,8 +7291,8 @@ var require_cross_spawn = __commonJS({
       result.error = result.error || enoent.verifyENOENTSync(result.status, parsed);
       return result;
     }
-    module2.exports = spawn2;
-    module2.exports.spawn = spawn2;
+    module2.exports = spawn3;
+    module2.exports.spawn = spawn3;
     module2.exports.sync = spawnSync;
     module2.exports._parse = parse3;
     module2.exports._enoent = enoent;
@@ -44582,74 +44582,135 @@ ${hints.map((h2) => `- ${h2}`).join("\n")}` : ""
 }
 
 // src/features/scaffold/CommandExecutor.ts
+var import_child_process = require("child_process");
+var fs2 = __toESM(require("fs"));
 var vscode2 = __toESM(require("vscode"));
+var DEFAULT_TIMEOUT_MS2 = 12e4;
+var KILL_GRACE_MS = 2e3;
+var MAX_OUTPUT_BYTES = 64 * 1024;
 var CommandExecutor = class {
-  terminal;
+  constructor(timeoutMs = DEFAULT_TIMEOUT_MS2) {
+    this.timeoutMs = timeoutMs;
+  }
+  outputChannel;
+  activeChildren = /* @__PURE__ */ new Set();
   /**
-   * Execute a command in the dedicated NeuroCode terminal.
-   * Returns stdout/stderr as a combined string.
+   * Execute a command in a child process.
+   * Returns combined stdout+stderr (interleaved by arrival order) and exit code.
    */
   async execute(command, cwd) {
     const cdMatch = command.trim().match(/^cd\s+("?.+"?|'.+'|\S+)$/);
     if (cdMatch) {
-      Logger.log(`[CommandExecutor] Skipping bare 'cd' command (use cwd parameter instead): ${command}`);
+      Logger.log(`[CommandExecutor] Skipping bare 'cd' (use cwd parameter instead): ${command}`);
       return { output: "", exitCode: 0 };
     }
-    const terminal = this.getOrCreateTerminal(cwd);
-    if (terminal.shellIntegration) {
-      return this.executeWithShellIntegration(terminal, command);
+    const channel = this.getOrCreateChannel();
+    channel.appendLine("");
+    channel.appendLine(`$ ${command}`);
+    if (cwd) {
+      channel.appendLine(`  (cwd: ${cwd})`);
     }
-    return this.executeFireAndForget(terminal, command);
-  }
-  async executeWithShellIntegration(terminal, command) {
-    const execution = terminal.shellIntegration.executeCommand(command);
-    const outputChunks = [];
-    for await (const chunk of execution.read()) {
-      outputChunks.push(chunk);
+    if (cwd && !fs2.existsSync(cwd)) {
+      const msg = `Working directory does not exist: ${cwd}`;
+      Logger.warn(`[CommandExecutor] ${msg}`);
+      channel.appendLine(`  \u2717 ${msg}`);
+      return { output: msg, exitCode: 1 };
     }
-    const exitCode = await new Promise((resolve3) => {
-      const timer = setTimeout(() => {
-        disposable.dispose();
-        Logger.warn(`[CommandExecutor] Command timed out (120s): ${command}`);
-        resolve3(1);
-      }, 12e4);
-      const disposable = vscode2.window.onDidEndTerminalShellExecution((e2) => {
-        if (e2.execution === execution) {
-          clearTimeout(timer);
-          disposable.dispose();
-          resolve3(e2.exitCode ?? 0);
+    return new Promise((resolve3) => {
+      let child;
+      try {
+        child = (0, import_child_process.spawn)(command, {
+          cwd,
+          shell: true,
+          // let /bin/sh parse &&, ||, quotes, globs
+          env: {
+            ...process.env,
+            FORCE_COLOR: "0",
+            // suppress ANSI escapes in captured output
+            NO_COLOR: "1"
+          }
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        Logger.error(`[CommandExecutor] spawn failed: ${msg}`);
+        channel.appendLine(`  \u2717 spawn failed: ${msg}`);
+        resolve3({ output: msg, exitCode: 1 });
+        return;
+      }
+      this.activeChildren.add(child);
+      const chunks = [];
+      let collectedBytes = 0;
+      let truncated = false;
+      const collect = (data) => {
+        const s2 = data.toString();
+        channel.append(s2);
+        if (truncated) {
+          return;
         }
+        const remaining = MAX_OUTPUT_BYTES - collectedBytes;
+        if (s2.length > remaining) {
+          chunks.push(s2.slice(0, remaining));
+          chunks.push("\n\u2026[output truncated]\u2026\n");
+          truncated = true;
+        } else {
+          chunks.push(s2);
+          collectedBytes += s2.length;
+        }
+      };
+      child.stdout?.on("data", collect);
+      child.stderr?.on("data", collect);
+      let settled = false;
+      const settle = (output, exitCode) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timer);
+        this.activeChildren.delete(child);
+        channel.appendLine(`  \u2192 exit ${exitCode}`);
+        resolve3({ output, exitCode });
+      };
+      const timer = setTimeout(() => {
+        Logger.warn(`[CommandExecutor] Command timed out (${this.timeoutMs}ms): ${command}`);
+        channel.appendLine(`  \u2717 timed out after ${this.timeoutMs}ms \u2014 killing`);
+        try {
+          child.kill("SIGTERM");
+        } catch {
+        }
+        setTimeout(() => {
+          try {
+            child.kill("SIGKILL");
+          } catch {
+          }
+        }, KILL_GRACE_MS);
+      }, this.timeoutMs);
+      child.on("error", (err) => {
+        Logger.error(`[CommandExecutor] child error: ${err.message}`);
+        settle(`spawn error: ${err.message}`, 1);
+      });
+      child.on("close", (code, signal) => {
+        const exitCode = code ?? (signal ? 124 : 1);
+        settle(chunks.join(""), exitCode);
       });
     });
-    return { output: outputChunks.join(""), exitCode };
   }
-  async executeFireAndForget(terminal, command) {
-    terminal.sendText(command, true);
-    await new Promise((r2) => setTimeout(r2, 500));
-    Logger.log(`[CommandExecutor] Sent (no shell integration): ${command}`);
-    return { output: "(command sent to terminal \u2014 check terminal for output)", exitCode: 0 };
-  }
-  getOrCreateTerminal(cwd) {
-    if (this.terminal && !this.isTerminalClosed(this.terminal)) {
-      if (cwd) {
-        this.terminal.sendText(`cd "${cwd}"`, true);
-      }
-      return this.terminal;
+  getOrCreateChannel() {
+    if (!this.outputChannel) {
+      this.outputChannel = vscode2.window.createOutputChannel("NeuroCode Scaffold");
+      this.outputChannel.show(true);
     }
-    this.terminal = vscode2.window.createTerminal({
-      name: "NeuroCode Scaffold",
-      cwd,
-      iconPath: new vscode2.ThemeIcon("rocket")
-    });
-    this.terminal.show(true);
-    return this.terminal;
-  }
-  isTerminalClosed(terminal) {
-    return !vscode2.window.terminals.includes(terminal);
+    return this.outputChannel;
   }
   dispose() {
-    this.terminal?.dispose();
-    this.terminal = void 0;
+    for (const child of this.activeChildren) {
+      try {
+        child.kill("SIGKILL");
+      } catch {
+      }
+    }
+    this.activeChildren.clear();
+    this.outputChannel?.dispose();
+    this.outputChannel = void 0;
   }
 };
 
@@ -45941,7 +46002,7 @@ var PromptTemplate = class {
 };
 
 // src/services/prompts/PromptTemplateStore.ts
-var fs2 = __toESM(require("fs"));
+var fs3 = __toESM(require("fs"));
 var path5 = __toESM(require("path"));
 var PromptTemplateStore = class {
   constructor(promptsDir) {
@@ -45962,7 +46023,7 @@ var PromptTemplateStore = class {
     const manifestPath = path5.join(this.promptsDir, "manifest.json");
     let manifestRaw;
     try {
-      manifestRaw = await fs2.promises.readFile(manifestPath, "utf-8");
+      manifestRaw = await fs3.promises.readFile(manifestPath, "utf-8");
     } catch (err) {
       throw new Error(
         `PromptTemplateStore: failed to read manifest at ${manifestPath}. Ensure resources/prompts/ is bundled with the extension. Underlying: ${err instanceof Error ? err.message : String(err)}`
@@ -45980,7 +46041,7 @@ var PromptTemplateStore = class {
     const loaded = await Promise.all(
       entries.map(async ([id, spec]) => {
         const fullPath = path5.join(this.promptsDir, spec.path);
-        const body = await fs2.promises.readFile(fullPath, "utf-8");
+        const body = await fs3.promises.readFile(fullPath, "utf-8");
         const metadata = {
           id,
           version: spec.version,
@@ -46029,7 +46090,7 @@ var PromptTemplateStore = class {
   // ─── Dev-mode hot reload ──────────────────────────────────────────────────
   enableHotReload() {
     try {
-      this.watcher = fs2.watch(
+      this.watcher = fs3.watch(
         this.promptsDir,
         { recursive: true },
         (_eventType, filename) => {

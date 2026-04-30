@@ -603,6 +603,7 @@ export class NeurocodeController implements vscode.Disposable {
     this.clearSession();
 
     // Dispose subsystems
+    this.scaffoldEngine.dispose();
     this.mcpManager.dispose();
     this.adaptationEngine.dispose();
     this.preferenceManager.dispose();
