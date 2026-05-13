@@ -37248,7 +37248,7 @@ ${s2.content}`).join("\n\n"),
     const response = await this.provider.completeWithTools({
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
-      maxTokens: 13784,
+      maxTokens: 32768,
       tools: [tool],
       toolChoice: { type: "tool", name: tool.name }
     });
@@ -40937,7 +40937,7 @@ var AnthropicProvider = class {
       description: t2.description,
       input_schema: t2.inputSchema
     }));
-    const response = await this.client.messages.create({
+    const stream = this.client.messages.stream({
       model: this.model,
       max_tokens: params.maxTokens,
       system: params.system,
@@ -40945,6 +40945,7 @@ var AnthropicProvider = class {
       messages,
       ...params.toolChoice ? { tool_choice: { type: "tool", name: params.toolChoice.name } } : {}
     });
+    const response = await stream.finalMessage();
     const content = response.content.map((block2) => {
       if (block2.type === "tool_use") {
         return {
@@ -45522,6 +45523,7 @@ var NeurocodeController = class {
    */
   dispose() {
     this.clearSession();
+    this.scaffoldEngine.dispose();
     this.mcpManager.dispose();
     this.adaptationEngine.dispose();
     this.preferenceManager.dispose();

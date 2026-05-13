@@ -69,7 +69,7 @@ export class AnthropicProvider implements LlmProvider {
       input_schema: t.inputSchema as Anthropic.Tool["input_schema"],
     }));
 
-    const response = await this.client.messages.create({
+    const stream = this.client.messages.stream({
       model: this.model,
       max_tokens: params.maxTokens,
       system: params.system,
@@ -77,6 +77,8 @@ export class AnthropicProvider implements LlmProvider {
       messages,
       ...(params.toolChoice ? { tool_choice: { type: "tool" as const, name: params.toolChoice.name } } : {}),
     });
+
+    const response = await stream.finalMessage();
 
     const content: LlmResponseBlock[] = response.content.map((block) => {
       if (block.type === "tool_use") {
