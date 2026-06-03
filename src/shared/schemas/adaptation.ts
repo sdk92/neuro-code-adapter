@@ -30,6 +30,28 @@ import {
 import { AssignmentSchema } from "./assignment";
 import { UserPreferencesSchema } from "./preferences";
 
+// ─── Array fault-tolerance ───────────────────────────────────────────────────
+
+/**
+ * Some models (notably under large tool-use outputs) stringify a JSON array
+ * instead of emitting it inline — e.g. `"adaptedSections": "[{...}]"` rather
+ * than `"adaptedSections": [{...}]`. That used to fail validation with
+ * "expected array, received string" and force a rule-based fallback, throwing
+ * away an otherwise-usable LLM response. This unwraps a stringified array
+ * before the inner `z.array(...)` runs; anything else is passed through
+ * untouched so genuine type errors still surface.
+ */
+function tolerantArray<T extends z.ZodTypeAny>(item: T) {
+  return z.preprocess((value) => {
+    if (typeof value !== "string") { return value; }
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value; // let z.array() reject it with the real error
+    }
+  }, z.array(item));
+}
+
 // ─── Visual modification ─────────────────────────────────────────────────────
 
 export const VisualModificationSchema = z.object({
@@ -55,17 +77,17 @@ export const AdaptedSectionSchema = z.object({
   originalSectionId: z.coerce.string(),
   adaptedTitle: z.coerce.string().default(""),
   adaptedContent: z.coerce.string().default(""),
-  visualModifications: z.array(VisualModificationSchema).default([]),
-  structuralChanges: z.array(z.coerce.string()).default([]),
+  visualModifications: tolerantArray(VisualModificationSchema).default([]),
+  structuralChanges: tolerantArray(z.coerce.string()).default([]),
 });
 export type AdaptedSection = z.infer<typeof AdaptedSectionSchema>;
 
 // ─── Full adaptation response ────────────────────────────────────────────────
 
 export const AdaptationResponseSchema = z.object({
-  adaptedSections: z.array(AdaptedSectionSchema),
+  adaptedSections: tolerantArray(AdaptedSectionSchema),
   supportMessage: z.string().optional(),
-  suggestedActions: z.array(SuggestedActionSchema).default([]),
+  suggestedActions: tolerantArray(SuggestedActionSchema).default([]),
   reasoning: z.coerce.string().default("No reasoning provided"),
   // Clamp to [0, 1]; invalid types fall back to 0.5.
   confidenceScore: z

@@ -205,7 +205,7 @@ export class AdaptationEngine {
    * for backward-compatibility with existing NeurocodeController code.
    */
   async generateAdaptation(request: AdaptationRequest): Promise<AdaptationResponseWithReceipt> {
-    // Strategy 1: MCP server if connected
+    // Strategy 1: MCP server if connected, whether this should be used
     if (this.mcpManager?.isConnected()) {
       try {
         const response = await this.generateViaMcp(request);

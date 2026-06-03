@@ -36894,6 +36894,18 @@ var AssignmentSchema = external_exports3.object({
 });
 
 // src/shared/schemas/adaptation.ts
+function tolerantArray(item) {
+  return external_exports3.preprocess((value) => {
+    if (typeof value !== "string") {
+      return value;
+    }
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }, external_exports3.array(item));
+}
 var VisualModificationSchema = external_exports3.object({
   type: VisualModificationTypeSchema,
   target: external_exports3.coerce.string(),
@@ -36909,13 +36921,13 @@ var AdaptedSectionSchema = external_exports3.object({
   originalSectionId: external_exports3.coerce.string(),
   adaptedTitle: external_exports3.coerce.string().default(""),
   adaptedContent: external_exports3.coerce.string().default(""),
-  visualModifications: external_exports3.array(VisualModificationSchema).default([]),
-  structuralChanges: external_exports3.array(external_exports3.coerce.string()).default([])
+  visualModifications: tolerantArray(VisualModificationSchema).default([]),
+  structuralChanges: tolerantArray(external_exports3.coerce.string()).default([])
 });
 var AdaptationResponseSchema = external_exports3.object({
-  adaptedSections: external_exports3.array(AdaptedSectionSchema),
+  adaptedSections: tolerantArray(AdaptedSectionSchema),
   supportMessage: external_exports3.string().optional(),
-  suggestedActions: external_exports3.array(SuggestedActionSchema).default([]),
+  suggestedActions: tolerantArray(SuggestedActionSchema).default([]),
   reasoning: external_exports3.coerce.string().default("No reasoning provided"),
   // Clamp to [0, 1]; invalid types fall back to 0.5.
   confidenceScore: external_exports3.number().transform((v2) => Math.max(0, Math.min(1, v2))).catch(0.5).default(0.5)
@@ -45099,8 +45111,6 @@ var NeurocodeController = class {
   // ─── State (inspired by Cline's TaskState pattern) ──────────────
   adaptationState = createInitialState();
   currentAdaptation = null;
-  // ─── Concurrency guards (inspired by Cline Controller line 427) ─
-  adaptationInProgress = false;
   // ─── Current LLM provider ──────────────────────────────────────
   currentProvider = null;
   constructor(context, webview, configService, promptBuilder) {
@@ -45131,7 +45141,7 @@ var NeurocodeController = class {
   // ─── Setup Methods ──────────────────────────────────────────────
   /**
    * Build an LLM provider from config and propagate to all subsystems.
-   * REFACTORED: Replaces propagateApiKey(). Now provider-agnostic.
+   * Now provider-agnostic.
    */
   rebuildProvider(config2) {
     this.currentProvider?.dispose();
@@ -45316,11 +45326,10 @@ var NeurocodeController = class {
       return;
     }
     const preferences = this.preferenceManager.getPreferences();
-    if (this.adaptationInProgress) {
+    if (this.adaptationState.isAdapting) {
       Logger.log("[Controller] Adaptation already in progress, ignoring duplicate request");
       return;
     }
-    this.adaptationInProgress = true;
     this.adaptationState.isAdapting = true;
     this.webview.postMessage({ type: "adaptation_progress", status: "started" });
     try {
@@ -45350,7 +45359,6 @@ var NeurocodeController = class {
       });
       await this.renderAdaptiveView(assignment);
     } finally {
-      this.adaptationInProgress = false;
       this.adaptationState.isAdapting = false;
     }
     this.postStateToWebview();
@@ -45452,7 +45460,7 @@ var NeurocodeController = class {
   }
   /**
    * Clear the current session and reset state.
-   * Inspired by Cline Controller.clearTask() (line 1006-1013):
+   * Inspired by Cline Controller.clearTask():
    *   async clearTask() {
    *     if (this.task) { await this.stateManager.clearTaskSettings() }
    *     await this.task?.abortTask()

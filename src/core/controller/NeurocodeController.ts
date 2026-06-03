@@ -77,9 +77,6 @@ export class NeurocodeController implements vscode.Disposable {
   private adaptationState: AdaptationState = createInitialState();
   private currentAdaptation: AdaptationResponse | null = null;
 
-  // ─── Concurrency guards (inspired by Cline Controller line 427) ─
-  private adaptationInProgress = false;
-
   // ─── Current LLM provider ──────────────────────────────────────
   private currentProvider: LlmProvider | null = null;
 
@@ -100,7 +97,7 @@ export class NeurocodeController implements vscode.Disposable {
     this.webview = webview;
     this.configService = configService;
 
-    // M1: wire the PromptBuilder into subsystems that need it.
+    // wire the PromptBuilder into subsystems that need it.
     this.adaptationEngine.setPromptBuilder(promptBuilder);
     this.assignmentManager.setPromptBuilder(promptBuilder);
 
@@ -109,7 +106,7 @@ export class NeurocodeController implements vscode.Disposable {
     this.setupPreferenceCallbacks();
     this.setupWebviewMessageRouter();
 
-    // REFACTORED: Create LLM provider from config and propagate to all subsystems.
+    // Create LLM provider from config and propagate to all subsystems.
     this.rebuildProvider(configService.getConfig());
 
     // Subscribe to future config changes that affect the provider
@@ -131,7 +128,7 @@ export class NeurocodeController implements vscode.Disposable {
 
   /**
    * Build an LLM provider from config and propagate to all subsystems.
-   * REFACTORED: Replaces propagateApiKey(). Now provider-agnostic.
+   * Now provider-agnostic.
    */
   private rebuildProvider(config: ReturnType<ConfigService["getConfig"]>): void {
     // Dispose old provider
@@ -359,11 +356,10 @@ export class NeurocodeController implements vscode.Disposable {
     const preferences = this.preferenceManager.getPreferences();
 
     // ─── Concurrency guard (Cline Controller.cancelInProgress pattern) ───
-    if (this.adaptationInProgress) {
+    if (this.adaptationState.isAdapting) {
       Logger.log("[Controller] Adaptation already in progress, ignoring duplicate request");
       return;
     }
-    this.adaptationInProgress = true;
     this.adaptationState.isAdapting = true;
 
     this.webview.postMessage({ type: "adaptation_progress", status: "started" });
@@ -402,7 +398,6 @@ export class NeurocodeController implements vscode.Disposable {
       await this.renderAdaptiveView(assignment);
     } finally {
       // Always clear flags (Cline pattern: finally block ensures cleanup)
-      this.adaptationInProgress = false;
       this.adaptationState.isAdapting = false;
     }
 
@@ -521,7 +516,7 @@ export class NeurocodeController implements vscode.Disposable {
 
   /**
    * Clear the current session and reset state.
-   * Inspired by Cline Controller.clearTask() (line 1006-1013):
+   * Inspired by Cline Controller.clearTask():
    *   async clearTask() {
    *     if (this.task) { await this.stateManager.clearTaskSettings() }
    *     await this.task?.abortTask()
